@@ -109,3 +109,26 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key   TEXT PRIMARY KEY,                    -- e.g. auth_secret (generated when AUTH_SECRET is not set)
   value TEXT NOT NULL
 );
+
+-- Zoho Projects open tasks behind the Operations task KPIs (replaced on every sync; drill-down lists)
+CREATE TABLE IF NOT EXISTS zoho_tasks (
+  portal_id    TEXT NOT NULL,
+  task_id      TEXT NOT NULL,
+  project_id   TEXT,
+  project_name TEXT,
+  company      TEXT,
+  task_key     TEXT,
+  name         TEXT,
+  tasklist     TEXT,
+  status       TEXT,
+  owners       TEXT,
+  due_date     TEXT,
+  link         TEXT,
+  this_month   BOOLEAN NOT NULL DEFAULT false,
+  due_today    BOOLEAN NOT NULL DEFAULT false,
+  overdue      BOOLEAN NOT NULL DEFAULT false,
+  overdue30    BOOLEAN NOT NULL DEFAULT false,
+  posting      BOOLEAN NOT NULL DEFAULT false,
+  synced_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (portal_id, task_id)
+);

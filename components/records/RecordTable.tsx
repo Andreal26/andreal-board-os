@@ -12,12 +12,12 @@ const FILTER_FIELD: Record<DeptKey, string> = {
 
 interface Row { id: number; company: string; source: string; data: RecordData; updated_at: string }
 
-export default function RecordTable({ dept, rows, canEdit, company }: { dept: DeptKey; rows: Row[]; canEdit: boolean; company: string }) {
+export default function RecordTable({ dept, rows, canEdit, company, initialFilter }: { dept: DeptKey; rows: Row[]; canEdit: boolean; company: string; initialFilter?: string }) {
   const cfg = DEPARTMENTS[dept];
   const cols = cfg.fields.filter((f) => f.col);
   const ff = cfg.fields.find((f) => f.key === FILTER_FIELD[dept])!;
   const [q, setQ] = useState('');
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(initialFilter ?? '');
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
   const [showImport, setShowImport] = useState(false);
 

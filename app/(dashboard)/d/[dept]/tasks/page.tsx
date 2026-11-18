@@ -1,0 +1,75 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { requireUser, scopeCompany, canViewDept } from '@/server/auth';
+import { listTasks, taskKindCounts, TASK_KINDS, type TaskKind } from '@/server/integrations/zoho-projects';
+import FilterBar from '@/components/layout/FilterBar';
+
+type Props = { params: Promise<{ dept: string }>; searchParams: Promise<{ company?: string; kind?: string }> };
+
+const fmtDate = (d: string | null) => (d ? new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—');
+const todayIst = () => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
+
+/** Drill-down behind the Operations task KPIs: the actual open Zoho Projects tasks (as of the last sync). */
+export default async function OpsTasksPage({ params, searchParams }: Props) {
+  const user = await requireUser();
+  const { dept } = await params;
+  if (dept !== 'operations') notFound();
+  if (!canViewDept(user, 'operations')) return <p className="text-gray-400">You don&apos;t have access to this department.</p>;
+  const sp = await searchParams;
+  const company = scopeCompany(user, sp.company);
+  const kind = (sp.kind && sp.kind in TASK_KINDS ? sp.kind : 'month') as TaskKind;
+  const [tasks, counts] = await Promise.all([listTasks(kind, company), taskKindCounts(company)]);
+  const today = todayIst();
+  const qs = (k: string) => `?kind=${k}${company !== 'All' ? `&company=${company}` : ''}`;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <Link href={`/d/operations${company !== 'All' ? `?company=${company}` : ''}`} className="text-xs text-teal-300 hover:underline">← Operations</Link>
+          <h1 className="h-display mt-1 text-3xl">{TASK_KINDS[kind].label}</h1>
+          <p className="mt-1 text-sm text-gray-400">Open tasks from Zoho Projects (live projects, as of the last sync). Click a task to open it in Zoho.</p>
+        </div>
+        <FilterBar company={company} period="MTD" showPeriod={false} lockCompany={user.company !== 'All'} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(TASK_KINDS) as TaskKind[]).map((k) => (
+          <Link key={k} href={qs(k)} className={`rounded-full border px-3 py-1 text-xs ${k === kind ? 'border-teal-400 bg-teal-400/10 text-teal-200' : 'border-white/10 text-gray-300 hover:border-white/30'}`}>
+            {TASK_KINDS[k].label} <span className="ml-1 font-semibold">{counts[k]}</span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="card overflow-x-auto">
+        <table className="tbl">
+          <thead>
+            <tr><th>Task</th><th>Project</th><th>Task list</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {tasks.map((t) => {
+              const late = t.due_date && t.due_date < today ? Math.round((Date.parse(today) - Date.parse(t.due_date)) / 86_400_000) : 0;
+              return (
+                <tr key={`${t.task_key}-${t.link}`}>
+                  <td className="max-w-[340px] whitespace-normal">
+                    <a href={t.link} target="_blank" rel="noopener noreferrer" className="text-white hover:text-teal-300">
+                      <span className="mr-2 text-[11px] text-gray-500">{t.task_key}</span>{t.name}
+                    </a>
+                  </td>
+                  <td className="whitespace-normal text-gray-300">{t.project_name}</td>
+                  <td className="whitespace-normal text-gray-400">{t.tasklist}</td>
+                  <td className="whitespace-normal text-gray-300">{t.owners || <span className="text-ink-500">Unassigned</span>}</td>
+                  <td className={late ? 'text-rag-red' : t.due_date === today ? 'text-rag-amber' : ''}>
+                    {fmtDate(t.due_date)}{late ? <span className="ml-1 text-[11px]">({late}d late)</span> : null}
+                  </td>
+                  <td className="text-gray-300">{t.status}</td>
+                </tr>
+              );
+            })}
+            {!tasks.length && <tr><td colSpan={6} className="py-6 text-center text-gray-500">No tasks here — or Zoho Projects hasn&apos;t synced yet (Settings → Sync integrations → Run now).</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

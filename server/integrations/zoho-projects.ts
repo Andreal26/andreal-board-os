@@ -80,29 +80,102 @@ const istDate = (iso: unknown) => (iso ? new Date(Date.parse(String(iso)) + 5.5 
  *   in Digital Marketing / Campaign projects, due last week Mon–Sun
  * plus all open tasks and overdue counts. Subtasks are included, as in Zoho's task views.
  */
-export function taskStats(tasks: any[], today: string, projectCategory: Map<string, string> = new Map()): Map<string, TaskStats> {
+export interface TaskFlags { key: string; due: string | null; thisMonth: boolean; dueToday: boolean; overdue: boolean; overdue30: boolean; posting: boolean }
+
+export function classifyTask(t: any, today: string, projectCategory: Map<string, string> = new Map()): TaskFlags {
   const lw = lastWeek(today);
-  const month = today.slice(0, 7);
   const owners = new RegExp(process.env.ZOHO_POSTING_OWNERS || 'susmita|prithwish', 'i');
-  const postingProjects = ['Digital Marketing', 'Campaign'];
+  const key = str(t.project?.id) || str(t.project?.name);
+  const due = istDate(t.end_date);
+  const ownerNames: string[] = (t.owners_and_work?.owners ?? []).map((o: any) => `${str(o.name)} ${str(o.email)}`);
+  const cat = projectCategory.get(key) ?? projectCategory.get(str(t.project?.name)) ?? '';
+  const overdue = !!due && due < today;
+  return {
+    key, due,
+    thisMonth: !!due && due.slice(0, 7) === today.slice(0, 7),
+    dueToday: due === today,
+    overdue,
+    overdue30: overdue && (Date.parse(today) - Date.parse(due!)) / 86_400_000 > 30,
+    posting: !!due && due >= lw.from && due <= lw.to && ownerNames.some((n) => owners.test(n)) && ['Digital Marketing', 'Campaign'].includes(cat),
+  };
+}
+
+export function taskStats(tasks: any[], today: string, projectCategory: Map<string, string> = new Map()): Map<string, TaskStats> {
   const out = new Map<string, TaskStats>();
   for (const t of tasks) {
-    const key = str(t.project?.id) || str(t.project?.name);
-    const st = out.get(key) ?? emptyStats();
-    const due = istDate(t.end_date);
-    const ownerNames: string[] = (t.owners_and_work?.owners ?? []).map((o: any) => `${str(o.name)} ${str(o.email)}`);
+    const f = classifyTask(t, today, projectCategory);
+    const st = out.get(f.key) ?? emptyStats();
     st.openTasks++;
-    if (due && due.slice(0, 7) === month) st.openTasksThisMonth++;
-    if (due === today) st.tasksDueToday++;
-    if (due && due < today) {
-      st.tasksOverdue++;
-      if ((Date.parse(today) - Date.parse(due)) / 86_400_000 > 30) st.tasksOverdue30++;
-    }
-    const cat = projectCategory.get(key) ?? projectCategory.get(str(t.project?.name)) ?? '';
-    if (due && due >= lw.from && due <= lw.to && ownerNames.some((n) => owners.test(n)) && postingProjects.includes(cat)) st.postingNotDoneLastWeek++;
-    out.set(key, st);
+    if (f.thisMonth) st.openTasksThisMonth++;
+    if (f.dueToday) st.tasksDueToday++;
+    if (f.overdue) st.tasksOverdue++;
+    if (f.overdue30) st.tasksOverdue30++;
+    if (f.posting) st.postingNotDoneLastWeek++;
+    out.set(f.key, st);
   }
   return out;
+}
+
+/** Zoho web link for a task (classic task-detail URL). */
+function taskLink(portalSlug: string, t: any) {
+  const host = process.env.ZOHO_PROJECTS_WEB_URL || 'https://projects.zoho.in';
+  return `${host}/portal/${portalSlug}#taskdetail/${str(t.project?.id)}/${str(t.tasklist?.id)}/${str(t.id)}`;
+}
+
+/** Replace the stored drill-down tasks of a portal with the tasks behind the KPIs (live projects only). */
+async function saveTasks(portalId: string, portalSlug: string, tasks: any[], today: string, category: Map<string, string>, companyOf: Map<string, string>) {
+  const rows = [];
+  for (const t of tasks) {
+    const f = classifyTask(t, today, category);
+    if (!companyOf.has(f.key) || !(f.thisMonth || f.dueToday || f.overdue || f.posting)) continue;
+    rows.push({
+      portal_id: portalId, task_id: str(t.id), project_id: f.key, project_name: str(t.project?.name), company: companyOf.get(f.key),
+      task_key: str(t.prefix), name: str(t.name), tasklist: str(t.tasklist?.name), status: str(t.status?.name),
+      owners: (t.owners_and_work?.owners ?? []).map((o: any) => str(o.name)).filter((n: string) => n && !/unassigned/i.test(n)).join(', '),
+      due_date: f.due, link: taskLink(portalSlug, t),
+      this_month: f.thisMonth, due_today: f.dueToday, overdue: f.overdue, overdue30: f.overdue30, posting: f.posting,
+    });
+  }
+  await query(`DELETE FROM zoho_tasks WHERE portal_id = $1`, [portalId]);
+  for (let i = 0; i < rows.length; i += 500) {
+    await query(
+      `INSERT INTO zoho_tasks (portal_id, task_id, project_id, project_name, company, task_key, name, tasklist, status, owners, due_date, link, this_month, due_today, overdue, overdue30, posting)
+       SELECT portal_id, task_id, project_id, project_name, company, task_key, name, tasklist, status, owners, due_date, link, this_month, due_today, overdue, overdue30, posting
+       FROM jsonb_to_recordset($1::jsonb) AS x(portal_id text, task_id text, project_id text, project_name text, company text, task_key text, name text, tasklist text,
+         status text, owners text, due_date text, link text, this_month boolean, due_today boolean, overdue boolean, overdue30 boolean, posting boolean)
+       ON CONFLICT (portal_id, task_id) DO NOTHING`,
+      [JSON.stringify(rows.slice(i, i + 500))],
+    );
+  }
+}
+
+export const TASK_KINDS = {
+  month: { label: 'Open tasks due this month', column: 'this_month' },
+  today: { label: 'Open tasks due today', column: 'due_today' },
+  posting: { label: 'Posting not done last week', column: 'posting' },
+  overdue: { label: 'Overdue open tasks', column: 'overdue' },
+  overdue30: { label: 'Overdue more than 30 days', column: 'overdue30' },
+} as const;
+export type TaskKind = keyof typeof TASK_KINDS;
+
+export interface StoredTask { task_key: string; name: string; project_name: string; tasklist: string; status: string; owners: string; due_date: string | null; link: string; company: string }
+
+export async function listTasks(kind: TaskKind, company: string) {
+  const col = TASK_KINDS[kind].column;
+  const params: unknown[] = [];
+  let where = `${col} = true`;
+  if (company !== 'All') { params.push(company); where += ` AND company = $1`; }
+  return query<StoredTask>(`SELECT task_key, name, project_name, tasklist, status, owners, due_date, link, company FROM zoho_tasks WHERE ${where} ORDER BY due_date NULLS LAST, project_name, task_key`, params);
+}
+
+export async function taskKindCounts(company: string): Promise<Record<TaskKind, number>> {
+  const params: unknown[] = [];
+  const where = company !== 'All' ? (params.push(company), 'WHERE company = $1') : '';
+  const r = await query<Record<string, string>>(
+    `SELECT count(*) FILTER (WHERE this_month) AS month, count(*) FILTER (WHERE due_today) AS today, count(*) FILTER (WHERE posting) AS posting,
+            count(*) FILTER (WHERE overdue) AS overdue, count(*) FILTER (WHERE overdue30) AS overdue30 FROM zoho_tasks ${where}`, params);
+  const row = r[0] ?? {};
+  return Object.fromEntries(Object.keys(TASK_KINDS).map((k) => [k, Number(row[k] ?? 0)])) as Record<TaskKind, number>;
 }
 
 // ── mapping ──────────────────────────────────────────────────
@@ -244,7 +317,14 @@ export async function syncZohoProjects(): Promise<number> {
       const cat = groupCategory(str(p.group_name)) || splitProjectName(str(p.name)).service;
       for (const k of [str(p.id), str(p.id_string), str(p.name)]) if (k) category.set(k, cat);
     }
-    const stats = taskStats(await fetchOpenTasks(token, portal.id), today, category);
+    const openTasks = await fetchOpenTasks(token, portal.id);
+    const stats = taskStats(openTasks, today, category);
+    const companyOf = new Map<string, string>();
+    for (const p of live) {
+      const co = mapProject(p, portal.name, today).company as string;
+      for (const k of [str(p.id), str(p.id_string), str(p.name)]) if (k) companyOf.set(k, co);
+    }
+    await saveTasks(portal.id, process.env.ZOHO_PROJECTS_PORTAL_SLUG || portal.name, openTasks, today, category, companyOf);
     for (const p of live) {
       const id = `${portal.id}:${str(p.id_string ?? p.id)}`;
       const ts = stats.get(str(p.id)) ?? stats.get(str(p.id_string)) ?? stats.get(str(p.name)) ?? emptyStats();

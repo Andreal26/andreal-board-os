@@ -196,6 +196,17 @@ export const DEPT_PAGE_KPIS: Partial<Record<DeptKey, string[]>> = {
   operations: ['ops_open_tasks', 'ops_tasks_due_today', 'ops_posting_not_done', 'ops_tasks_overdue', 'ops_active_jobs', 'ops_delayed_jobs'],
 };
 
+/** Where a KPI tile on a department page leads when clicked (drill-down list). */
+export const KPI_LINKS: Record<string, string> = {
+  ops_open_tasks: '/d/operations/tasks?kind=month',
+  ops_tasks_due_today: '/d/operations/tasks?kind=today',
+  ops_posting_not_done: '/d/operations/tasks?kind=posting',
+  ops_tasks_overdue: '/d/operations/tasks?kind=overdue',
+  ops_tasks_overdue_30: '/d/operations/tasks?kind=overdue30',
+  ops_active_jobs: '/d/operations',
+  ops_delayed_jobs: '/d/operations?status=Delayed',
+};
+
 /** Three key KPIs per department (Department Summary). */
 export const DEPT_KEY_KPIS: Record<DeptKey, string[]> = {
   operations: ['ops_delayed_jobs', 'ops_gross_contribution', 'ops_escalations'],

@@ -5,17 +5,18 @@ import { listRecords } from '@/server/records';
 import FilterBar from '@/components/layout/FilterBar';
 import RecordTable from '@/components/records/RecordTable';
 import KpiCard from '@/components/dashboard/KpiCard';
-import { DEPT_PAGE_KPIS } from '@/config/metrics';
+import { DEPT_PAGE_KPIS, KPI_LINKS } from '@/config/metrics';
 import { getBoard } from '@/server/board';
 
-type Props = { params: Promise<{ dept: string }>; searchParams: Promise<{ company?: string }> };
+type Props = { params: Promise<{ dept: string }>; searchParams: Promise<{ company?: string; status?: string }> };
 
 export default async function DeptPage({ params, searchParams }: Props) {
   const user = await requireUser();
   const { dept } = await params;
   if (!isDeptKey(dept)) notFound();
   if (!canViewDept(user, dept)) return <p className="text-gray-400">You don&apos;t have access to this department.</p>;
-  const company = scopeCompany(user, (await searchParams).company);
+  const sp = await searchParams;
+  const company = scopeCompany(user, sp.company);
   const cfg = DEPARTMENTS[dept];
   const records = await listRecords(dept, company);
   const canEdit = canEditDept(user, dept);
@@ -34,10 +35,14 @@ export default async function DeptPage({ params, searchParams }: Props) {
       </div>
       {board && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {kpiIds.map((id) => <KpiCard key={id} id={id} value={board.kpis[id]} target={board.targets[id]} />)}
+          {kpiIds.map((id) => {
+            const link = KPI_LINKS[id];
+            const href = link ? link + (company !== 'All' ? `${link.includes('?') ? '&' : '?'}company=${company}` : '') : undefined;
+            return <KpiCard key={id} id={id} value={board.kpis[id]} target={board.targets[id]} href={href} />;
+          })}
         </div>
       )}
-      <RecordTable dept={dept} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} />
+      <RecordTable key={sp.status ?? ''} dept={dept} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} initialFilter={sp.status} />
     </div>
   );
 }
