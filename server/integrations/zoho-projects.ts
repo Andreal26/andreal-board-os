@@ -116,6 +116,8 @@ export function taskStats(tasks: any[], today: string, projectCategory: Map<stri
   return out;
 }
 
+const decode = (v: string) => v.replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
 /** Zoho web link for a task (classic task-detail URL). */
 function taskLink(portalSlug: string, t: any) {
   const host = process.env.ZOHO_PROJECTS_WEB_URL || 'https://projects.zoho.in';
@@ -129,8 +131,8 @@ async function saveTasks(portalId: string, portalSlug: string, tasks: any[], tod
     const f = classifyTask(t, today, category);
     if (!companyOf.has(f.key) || !(f.thisMonth || f.dueToday || f.overdue || f.posting)) continue;
     rows.push({
-      portal_id: portalId, task_id: str(t.id), project_id: f.key, project_name: str(t.project?.name), company: companyOf.get(f.key),
-      task_key: str(t.prefix), name: str(t.name), tasklist: str(t.tasklist?.name), status: str(t.status?.name),
+      portal_id: portalId, task_id: str(t.id), project_id: f.key, project_name: decode(str(t.project?.name)), company: companyOf.get(f.key),
+      task_key: str(t.prefix), name: decode(str(t.name)), tasklist: decode(str(t.tasklist?.name)), status: str(t.status?.name),
       owners: (t.owners_and_work?.owners ?? []).map((o: any) => str(o.name)).filter((n: string) => n && !/unassigned/i.test(n)).join(', '),
       due_date: f.due, link: taskLink(portalSlug, t),
       this_month: f.thisMonth, due_today: f.dueToday, overdue: f.overdue, overdue30: f.overdue30, posting: f.posting,

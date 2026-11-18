@@ -42,25 +42,25 @@ export default async function OpsTasksPage({ params, searchParams }: Props) {
       </div>
 
       <div className="card overflow-x-auto">
-        <table className="tbl">
+        <table className="tbl w-full table-fixed">
           <thead>
-            <tr><th>Task</th><th>Project</th><th>Task list</th><th>Owner</th><th>Due</th><th>Status</th></tr>
+            <tr><th className="w-[34%]">Task</th><th className="w-[20%]">Project</th><th className="w-[14%]">Task list</th><th className="w-[12%]">Owner</th><th className="w-[11%]">Due</th><th className="w-[9%]">Status</th></tr>
           </thead>
           <tbody>
             {tasks.map((t) => {
               const late = t.due_date && t.due_date < today ? Math.round((Date.parse(today) - Date.parse(t.due_date)) / 86_400_000) : 0;
               return (
                 <tr key={`${t.task_key}-${t.link}`}>
-                  <td className="max-w-[340px] whitespace-normal">
+                  <td style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
                     <a href={t.link} target="_blank" rel="noopener noreferrer" className="text-white hover:text-teal-300">
                       <span className="mr-2 text-[11px] text-gray-500">{t.task_key}</span>{t.name}
                     </a>
                   </td>
-                  <td className="whitespace-normal text-gray-300">{t.project_name}</td>
-                  <td className="whitespace-normal text-gray-400">{t.tasklist}</td>
-                  <td className="whitespace-normal text-gray-300">{t.owners || <span className="text-ink-500">Unassigned</span>}</td>
-                  <td className={late ? 'text-rag-red' : t.due_date === today ? 'text-rag-amber' : ''}>
-                    {fmtDate(t.due_date)}{late ? <span className="ml-1 text-[11px]">({late}d late)</span> : null}
+                  <td className="text-gray-300" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{t.project_name}</td>
+                  <td className="text-gray-400" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{t.tasklist}</td>
+                  <td className="text-gray-300" style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{t.owners || <span className="text-ink-500">Unassigned</span>}</td>
+                  <td className={late ? 'text-rag-red' : t.due_date === today ? 'text-rag-amber' : ''} style={{ whiteSpace: 'normal' }}>
+                    {fmtDate(t.due_date)}{late ? <div className="text-[11px]">{late}d late</div> : null}
                   </td>
                   <td className="text-gray-300">{t.status}</td>
                 </tr>
