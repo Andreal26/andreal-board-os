@@ -48,9 +48,14 @@ export async function zohoConnection(product: ZohoProduct = 'crm'): Promise<Zoho
   };
 }
 
-/** Fresh access token for a connected product. */
+/** Access tokens live an hour; Zoho throttles refreshes, so reuse them (per process). */
+const tokenCache = new Map<string, { token: string; exp: number }>();
+
+/** Access token for a connected product (cached until 5 minutes before it expires). */
 export async function zohoAccessToken(product: ZohoProduct = 'crm') {
   const conn = await zohoConnection(product);
+  const cached = conn.refreshToken ? tokenCache.get(`${product}:${conn.refreshToken.slice(-12)}`) : undefined;
+  if (cached && cached.exp > Date.now()) return cached.token;
   if (!conn.refreshToken) throw new Error(`Zoho ${product === 'crm' ? 'CRM' : 'Projects'} is not connected yet — use the Connect button in Settings`);
   const res = await fetch(`${conn.accountsUrl}/oauth/v2/token?` + new URLSearchParams({
     refresh_token: conn.refreshToken,
@@ -60,6 +65,8 @@ export async function zohoAccessToken(product: ZohoProduct = 'crm') {
   }), { method: 'POST', cache: 'no-store' });
   const body = await res.json().catch(() => ({}));
   if (!body.access_token) throw new Error(`Zoho token error: ${JSON.stringify(body).slice(0, 200)}`);
+  const ttl = (Number(body.expires_in) || 3600) * 1000;
+  tokenCache.set(`${product}:${conn.refreshToken!.slice(-12)}`, { token: body.access_token, exp: Date.now() + ttl - 300_000 });
   return body.access_token as string;
 }
 

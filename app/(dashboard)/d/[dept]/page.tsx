@@ -4,6 +4,9 @@ import { DEPARTMENTS, isDeptKey } from '@/config/departments';
 import { listRecords } from '@/server/records';
 import FilterBar from '@/components/layout/FilterBar';
 import RecordTable from '@/components/records/RecordTable';
+import KpiCard from '@/components/dashboard/KpiCard';
+import { DEPT_PAGE_KPIS } from '@/config/metrics';
+import { getBoard } from '@/server/board';
 
 type Props = { params: Promise<{ dept: string }>; searchParams: Promise<{ company?: string }> };
 
@@ -16,6 +19,8 @@ export default async function DeptPage({ params, searchParams }: Props) {
   const cfg = DEPARTMENTS[dept];
   const records = await listRecords(dept, company);
   const canEdit = canEditDept(user, dept);
+  const kpiIds = DEPT_PAGE_KPIS[dept] ?? [];
+  const board = kpiIds.length ? await getBoard(company) : null;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -27,6 +32,11 @@ export default async function DeptPage({ params, searchParams }: Props) {
         </div>
         <FilterBar company={company} period="MTD" showPeriod={false} lockCompany={user.company !== 'All'} />
       </div>
+      {board && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {kpiIds.map((id) => <KpiCard key={id} id={id} value={board.kpis[id]} target={board.targets[id]} />)}
+        </div>
+      )}
       <RecordTable dept={dept} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} />
     </div>
   );

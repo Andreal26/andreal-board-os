@@ -29,7 +29,7 @@ const company = (group: string): Field => ({ key: 'company', label: 'Company', t
 // ── 03 Operations ────────────────────────────────────────────
 const opsDone = (r: RecordData) => ['Delivered', 'Closed'].includes(r.deliveryStatus);
 const ops = (() => {
-  const a = F('Job'), b = F('Timeline'), c = F('Effort & cost'), d = F('Quality & billing'), e = F('Control');
+  const a = F('Job'), b = F('Timeline'), c = F('Effort & cost'), d = F('Quality & billing'), e = F('Control'), t = F('Tasks (Zoho Projects)');
   return [
     company('Job'),
     a.text('clientName', 'Client Name', { required: true, col: true }),
@@ -85,6 +85,11 @@ const ops = (() => {
     e.text('actionOwner', 'Action Owner'),
     e.date('actionDueDate', 'Action Due Date'),
     e.area('notes', 'Management Notes'),
+    t.num('openTasks', 'Open Tasks', { col: true, help: 'Open tasks and subtasks in Zoho Projects (synced daily).' }),
+    t.num('tasksDueToday', 'Open Tasks Due Today'),
+    t.num('tasksOverdue', 'Overdue Open Tasks'),
+    t.num('tasksOverdue30', 'Overdue More Than 30 Days'),
+    t.num('postingNotDoneLastWeek', 'Posting Not Done Last Week', { help: 'Open tasks in a posting task list (e.g. "Calendar Post") that were due last week (Mon–Sun).' }),
   ];
 })();
 

@@ -30,15 +30,65 @@ export async function zohoProjectsPortals(token: string): Promise<{ id: string; 
     .filter((p: { id: string }) => !only.length || only.includes(p.id));
 }
 
-export async function fetchPortalProjects(token: string, portalId: string): Promise<any[]> {
+export async function fetchPortalProjects(token: string, portalId: string, statuses = ['active']): Promise<any[]> {
   const out: any[] = [];
-  for (const status of ['active', 'archived']) {
+  for (const status of statuses) {
     for (let index = 1; index < 10_000; index += 100) {
       const body: any = await get(token, `/portal/${portalId}/projects/?` + new URLSearchParams({ index: String(index), range: '100', status }));
       const list: any[] = body.projects ?? [];
       out.push(...list.map((p) => ({ ...p, _archived: status === 'archived' })));
       if (list.length < 100) break;
     }
+  }
+  return out;
+}
+
+/** All open tasks (subtasks included) across the portal — v3 API, 100 per page. */
+export async function fetchOpenTasks(token: string, portalId: string): Promise<any[]> {
+  const filter = JSON.stringify({ criteria: [{ field_name: 'status', criteria_condition: 'custom_condition', value: ['${ALL_OPEN}'] }], pattern: '1' });
+  const out: any[] = [];
+  for (let page = 1; page <= 100; page++) {
+    const body: any = await fetchJson(`${await apiBase()}/api/v3/portal/${portalId}/tasks?` + new URLSearchParams({ page: String(page), per_page: '100', filter }), {
+      headers: { Authorization: `Zoho-oauthtoken ${token}` },
+    });
+    const list: any[] = body.tasks ?? [];
+    out.push(...list);
+    if (!body.page_info?.has_next_page || !list.length) break;
+  }
+  return out;
+}
+
+export interface TaskStats { openTasks: number; tasksDueToday: number; tasksOverdue: number; tasksOverdue30: number; postingNotDoneLastWeek: number }
+const emptyStats = (): TaskStats => ({ openTasks: 0, tasksDueToday: 0, tasksOverdue: 0, tasksOverdue30: 0, postingNotDoneLastWeek: 0 });
+
+/** Monday–Sunday of the previous week (IST dates). */
+export function lastWeek(today: string) {
+  const d = new Date(`${today}T00:00:00Z`);
+  const dow = (d.getUTCDay() + 6) % 7; // 0 = Monday
+  const mon = new Date(d.getTime() - (dow + 7) * 86_400_000);
+  const sun = new Date(mon.getTime() + 6 * 86_400_000);
+  return { from: mon.toISOString().slice(0, 10), to: sun.toISOString().slice(0, 10) };
+}
+
+const istDate = (iso: unknown) => (iso ? new Date(Date.parse(String(iso)) + 5.5 * 3600_000).toISOString().slice(0, 10) : null);
+
+/** Per project: open tasks, due today, overdue (and 30+ days), and posting tasks from last week still open. */
+export function taskStats(tasks: any[], today: string): Map<string, TaskStats> {
+  const lw = lastWeek(today);
+  const posting = new RegExp(process.env.ZOHO_POSTING_TASKLIST_REGEX || 'post', 'i');
+  const out = new Map<string, TaskStats>();
+  for (const t of tasks) {
+    const key = str(t.project?.id) || str(t.project?.name);
+    const st = out.get(key) ?? emptyStats();
+    const due = istDate(t.end_date);
+    st.openTasks++;
+    if (due === today) st.tasksDueToday++;
+    if (due && due < today) {
+      st.tasksOverdue++;
+      if ((Date.parse(today) - Date.parse(due)) / 86_400_000 > 30) st.tasksOverdue30++;
+    }
+    if (due && due >= lw.from && due <= lw.to && posting.test(str(t.tasklist?.name))) st.postingNotDoneLastWeek++;
+    out.set(key, st);
   }
   return out;
 }
@@ -166,6 +216,9 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
   };
 }
 
+/** Only live work reaches the Operations tab: active (not archived) projects that are not Completed/Cancelled/Invoiced. */
+export const isLiveProject = (p: any) => !p._archived && !DONE.test(str(p.custom_status_name ?? p.status));
+
 export async function syncZohoProjects(): Promise<number> {
   const token = await zohoAccessToken('projects');
   const portals = await zohoProjectsPortals(token);
@@ -173,9 +226,11 @@ export async function syncZohoProjects(): Promise<number> {
   const today = todayIst();
   const ids: string[] = [];
   for (const portal of portals) {
-    for (const p of await fetchPortalProjects(token, portal.id)) {
+    const stats = taskStats(await fetchOpenTasks(token, portal.id), today);
+    for (const p of (await fetchPortalProjects(token, portal.id)).filter(isLiveProject)) {
       const id = `${portal.id}:${str(p.id_string ?? p.id)}`;
-      const data = Object.fromEntries(Object.entries(mapProject(p, portal.name, today)).filter(([, v]) => v !== undefined && v !== ''));
+      const ts = stats.get(str(p.id)) ?? stats.get(str(p.id_string)) ?? stats.get(str(p.name)) ?? emptyStats();
+      const data = Object.fromEntries(Object.entries({ ...mapProject(p, portal.name, today), ...ts } as RecordData).filter(([, v]) => v !== undefined && v !== ''));
       await upsertExternal('operations', SOURCE, id, data as RecordData);
       ids.push(id);
     }

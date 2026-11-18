@@ -51,6 +51,16 @@ export const METRICS: Metric[] = [
   { id: 'ops_unbilled_delivered', label: 'Delivered but not billed', dept: 'operations', unit: 'currency', kind: 'stock', better: 'lower', agg: 'avg',
     help: 'Value of delivered jobs whose billing status is still Not Billed — cash left on the table.',
     compute: (d) => sum(d.operations.filter((r) => !opsActive(r) && (r.billingStatus ?? 'Not Billed') === 'Not Billed'), 'jobValue') },
+  { id: 'ops_open_tasks', label: 'All over open tasks', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
+    help: 'Open tasks and subtasks across active Zoho projects.', compute: (d) => sum(d.operations.filter(opsActive), 'openTasks') },
+  { id: 'ops_tasks_due_today', label: 'Open tasks due today', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
+    help: 'Open tasks whose due date is today (as of the last sync).', compute: (d) => sum(d.operations.filter(opsActive), 'tasksDueToday') },
+  { id: 'ops_posting_not_done', label: 'Posting not done last week', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
+    help: 'Posting tasks (task lists with "post" in the name) due last week Mon–Sun and still open.', compute: (d) => sum(d.operations.filter(opsActive), 'postingNotDoneLastWeek') },
+  { id: 'ops_tasks_overdue', label: 'Overdue open tasks', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
+    help: 'Open tasks past their due date.', compute: (d) => sum(d.operations.filter(opsActive), 'tasksOverdue') },
+  { id: 'ops_tasks_overdue_30', label: 'Overdue more than 30 days', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
+    help: 'Open tasks more than 30 days past due.', compute: (d) => sum(d.operations.filter(opsActive), 'tasksOverdue30') },
   { id: 'ops_escalations', label: 'Ops escalations', dept: 'operations', unit: 'count', kind: 'stock', better: 'lower', agg: 'avg',
     help: 'Open jobs with Escalation Needed = Yes.', compute: (d) => d.operations.filter((r) => opsActive(r) && r.escalationNeeded === 'Yes').length },
 
@@ -180,6 +190,11 @@ export const EXECUTIVE_METRICS = [
   'cash_collections', 'cash_net', 'cash_receivables_90', 'cash_gap_30',
   'rnd_active', 'rnd_revenue_potential', 'rnd_pilots', 'rnd_blocked',
 ];
+
+/** KPI strip at the top of each department's data page. */
+export const DEPT_PAGE_KPIS: Partial<Record<DeptKey, string[]>> = {
+  operations: ['ops_open_tasks', 'ops_tasks_due_today', 'ops_posting_not_done', 'ops_tasks_overdue', 'ops_active_jobs', 'ops_delayed_jobs'],
+};
 
 /** Three key KPIs per department (Department Summary). */
 export const DEPT_KEY_KPIS: Record<DeptKey, string[]> = {
