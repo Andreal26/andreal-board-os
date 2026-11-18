@@ -102,8 +102,9 @@ export default function OpsProjectTable({ rows, canEdit, company, initialFilter 
           <tbody>
             {shown.map((r) => {
               const d = r.data;
-              const closed = n(d.tasksClosed), total = n(d.tasksTotal);
-              const pct = total ? Math.round((closed / total) * 100) : 0;
+              const closed = n(d.tasksClosed), total = n(d.tasksTotal), open = Math.max(0, total - closed);
+              // Same as Zoho's Tasks column: closed · project % · open
+              const pct = d.completionPct !== undefined && d.completionPct !== null ? Math.round(n(d.completionPct)) : total ? Math.round((closed / total) * 100) : 0;
               const phases = n(d.phasesOpen) + n(d.phasesClosed);
               const issues = n(d.issuesOpen) + n(d.issuesClosed);
               const owner = String(d.owner ?? '');
@@ -131,13 +132,13 @@ export default function OpsProjectTable({ rows, canEdit, company, initialFilter 
                     ) : <span className="px-3 text-ink-600">—</span>}
                   </td>
                   <td>
-                    <div className="flex items-center gap-2 text-xs tabular-nums">
+                    <div className="flex items-center gap-2 text-xs tabular-nums" title={`${closed} closed · ${open} open`}>
                       <span className="w-6 text-right">{closed}</span>
                       <span className="relative h-3.5 w-20 overflow-hidden rounded bg-white/10">
                         <span className="absolute inset-y-0 left-0 bg-rag-green/80" style={{ width: `${pct}%` }} />
                         <span className="absolute inset-0 grid place-items-center text-[10px] text-white">{pct}%</span>
                       </span>
-                      <span className="w-8">{total}</span>
+                      <span className="w-8" title={`${open} open of ${total}`}>{open}</span>
                     </div>
                   </td>
                   <td>
