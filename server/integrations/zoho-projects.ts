@@ -70,13 +70,14 @@ export function splitProjectName(name: string): { client: string; service: strin
   const services: [RegExp, string][] = [
     [/\bDM\b/i, 'Digital Marketing'], [/\bAMC\b/i, 'Website AMC'], [/\bSEO\b/i, 'SEO'], [/\bchat ?bot\b/i, 'Chatbot'],
     [/\bwebsite\b/i, 'Website'], [/\bcalendar\b/i, 'Calendar / Print'], [/\bAR\b|\bVR\b|immersive|walkthrough/i, 'Immersive'],
-    [/\bshoot\b|photo/i, 'Photography'], [/\bvideo\b|reel/i, 'Video'],
+    [/\bshoot\b|photo/i, 'Photography'], [/\bvideo\b|reel/i, 'Video'], [/walk ?through/i, 'Immersive'],
+    [/catalogue|catalog|brochure/i, 'Design'],
   ];
   const service = services.find(([re]) => re.test(name))?.[1] ?? '';
   const client = name
     .replace(new RegExp(`\\b(${MONTHS})\\b\\.?`, 'gi'), ' ')
     .replace(/\b(19|20)\d{2}\b|\b\d{2}\b/g, ' ')
-    .replace(/\b(DM|AMC|SEO|Chatbot|Website|Calendar)\b/gi, ' ')
+    .replace(/\b(DM|AMC|SEO|Chatbot|Informative|Website|Calendar|Walk ?Through|Product Catalogue|Catalogue)\b/gi, ' ')
     .replace(/[-–—_/]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -84,6 +85,23 @@ export function splitProjectName(name: string): { client: string; service: strin
 }
 
 const DONE = /complet|closed|deliver|done|invoic|cancel/i;
+
+/** Project groups ("DM July 2026", "AMC WEBSITE", "DESIGN PROJECTS"…) → department-style service. */
+export function groupCategory(group: string): string {
+  const g = group.toLowerCase();
+  if (!g || /ungroup/.test(g)) return '';
+  if (/\bamc\b/.test(g)) return 'Website AMC';
+  if (/^dm\b|digital|\bsmo\b|\bseo\b/.test(g)) return 'Digital Marketing';
+  if (/website|web\b/.test(g)) return 'Website';
+  if (/design/.test(g)) return 'Design';
+  if (/immersive|\bar\b|\bvr\b/.test(g)) return 'Immersive';
+  if (/campa/.test(g)) return 'Campaign';
+  if (/print|calendar/.test(g)) return 'Print / Production';
+  if (/internal|admin/.test(g)) return 'Internal';
+  return '';
+}
+
+const INTERNAL = /\b(internal|admin project|it project|pitching|research ?and ?development|andreal portfolio|lead (sheet )?update|meta audience)\b|^(andreal|anderson)\b/i;
 
 export function mapProject(p: any, portalName: string, today = todayIst()): RecordData {
   const name = str(p.name);
@@ -112,11 +130,13 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
     : 'Production';
 
   const fromName = splitProjectName(name);
-  const client = customField(p, ['client', 'client name', 'customer', 'account']) || str(p.client_name ?? p.client?.name) || fromName.client;
-  const group = /ungroup/i.test(str(p.group_name)) ? '' : str(p.group_name);
-  const service = customField(p, ['service', 'service type', 'category', 'type', 'project type']) || fromName.service || group;
-  const andersonHint = /anderson/i.test(customField(p, ['company', 'work done for', 'billing company']) || '');
+  const client = customField(p, ['client', 'client name', 'customer', 'account']) || str(p.client_name ?? p.client?.name) || (INTERNAL.test(name) ? 'Internal' : fromName.client);
+  const team = groupCategory(str(p.group_name));
+  const service = customField(p, ['service', 'service type', 'category', 'type', 'project type']) || (team !== 'Internal' ? team : '') || fromName.service || team;
+  const internal = team === 'Internal' || INTERNAL.test(name);
+  const andersonHint = /anderson/i.test(customField(p, ['company', 'work done for', 'billing company']) || '') || /^anderson\b/i.test(name);
   const issues = Number(p.bug_count?.open) || 0;
+  const hours = (v: unknown) => { const m = str(v).match(/^(\d+)[.:](\d{2})$/); const h = m ? Number(m[1]) + Number(m[2]) / 60 : Number(v); return Number.isFinite(h) && h > 0 ? Math.round(h * 10) / 10 : undefined; };
 
   return {
     company: andersonHint ? 'Anderson' : (process.env.ZOHO_PROJECTS_COMPANY === 'Anderson' ? 'Anderson' : 'Andreal'),
@@ -129,8 +149,10 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
     committedDate: end,
     stage,
     completionPct: completion,
+    plannedHours: hours(p.planned_hours),
+    actualHours: hours(p.actual_hours),
     deliveryStatus,
-    assignedTeam: group || undefined,
+    assignedTeam: team || (/ungroup/i.test(str(p.group_name)) ? undefined : str(p.group_name) || undefined),
     riskLevel: done ? 'Low' : delay > 14 ? 'High' : delay > 0 || deliveryStatus === 'At Risk' ? 'Medium' : 'Low',
     notes: [
       `Zoho Projects (${portalName})`,
@@ -138,6 +160,8 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
       open + closed ? `${closed}/${open + closed} tasks closed` : 'no tasks',
       issues ? `${issues} open issues` : '',
       archived ? 'archived' : '',
+      internal ? 'internal project' : '',
+      str(p.group_name) && `group ${str(p.group_name)}`,
     ].filter(Boolean).join('; '),
   };
 }
