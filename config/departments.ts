@@ -85,11 +85,12 @@ const ops = (() => {
     e.text('actionOwner', 'Action Owner'),
     e.date('actionDueDate', 'Action Due Date'),
     e.area('notes', 'Management Notes'),
-    t.num('openTasks', 'Open Tasks', { col: true, help: 'Open tasks and subtasks in Zoho Projects (synced daily).' }),
+    t.num('openTasks', 'Open Tasks (all)', { help: 'All open tasks and subtasks in Zoho Projects (synced daily).' }),
+    t.num('openTasksThisMonth', 'Open Tasks Due This Month', { col: true }),
     t.num('tasksDueToday', 'Open Tasks Due Today'),
     t.num('tasksOverdue', 'Overdue Open Tasks'),
     t.num('tasksOverdue30', 'Overdue More Than 30 Days'),
-    t.num('postingNotDoneLastWeek', 'Posting Not Done Last Week', { help: 'Open tasks in a posting task list (e.g. "Calendar Post") that were due last week (Mon–Sun).' }),
+    t.num('postingNotDoneLastWeek', 'Posting Not Done Last Week', { help: 'Open tasks of the posting team (Susmita, Prithwish) in DM / campaign projects, due last week Mon–Sun.' }),
   ];
 })();
 

@@ -58,8 +58,8 @@ export async function fetchOpenTasks(token: string, portalId: string): Promise<a
   return out;
 }
 
-export interface TaskStats { openTasks: number; tasksDueToday: number; tasksOverdue: number; tasksOverdue30: number; postingNotDoneLastWeek: number }
-const emptyStats = (): TaskStats => ({ openTasks: 0, tasksDueToday: 0, tasksOverdue: 0, tasksOverdue30: 0, postingNotDoneLastWeek: 0 });
+export interface TaskStats { openTasks: number; openTasksThisMonth: number; tasksDueToday: number; tasksOverdue: number; tasksOverdue30: number; postingNotDoneLastWeek: number }
+const emptyStats = (): TaskStats => ({ openTasks: 0, openTasksThisMonth: 0, tasksDueToday: 0, tasksOverdue: 0, tasksOverdue30: 0, postingNotDoneLastWeek: 0 });
 
 /** Monday–Sunday of the previous week (IST dates). */
 export function lastWeek(today: string) {
@@ -72,22 +72,34 @@ export function lastWeek(today: string) {
 
 const istDate = (iso: unknown) => (iso ? new Date(Date.parse(String(iso)) + 5.5 * 3600_000).toISOString().slice(0, 10) : null);
 
-/** Per project: open tasks, due today, overdue (and 30+ days), and posting tasks from last week still open. */
-export function taskStats(tasks: any[], today: string): Map<string, TaskStats> {
+/**
+ * Per project, matching the Zoho "Global Dashboard" widgets:
+ * - openTasksThisMonth ("All Over Open Tasks"): open tasks due in the current calendar month
+ * - tasksDueToday ("Open Tasks Due Today")
+ * - postingNotDoneLastWeek: open tasks owned by the posting team (ZOHO_POSTING_OWNERS, default Susmita|Prithwish)
+ *   in Digital Marketing / Campaign projects, due last week Mon–Sun
+ * plus all open tasks and overdue counts. Subtasks are included, as in Zoho's task views.
+ */
+export function taskStats(tasks: any[], today: string, projectCategory: Map<string, string> = new Map()): Map<string, TaskStats> {
   const lw = lastWeek(today);
-  const posting = new RegExp(process.env.ZOHO_POSTING_TASKLIST_REGEX || 'post', 'i');
+  const month = today.slice(0, 7);
+  const owners = new RegExp(process.env.ZOHO_POSTING_OWNERS || 'susmita|prithwish', 'i');
+  const postingProjects = ['Digital Marketing', 'Campaign'];
   const out = new Map<string, TaskStats>();
   for (const t of tasks) {
     const key = str(t.project?.id) || str(t.project?.name);
     const st = out.get(key) ?? emptyStats();
     const due = istDate(t.end_date);
+    const ownerNames: string[] = (t.owners_and_work?.owners ?? []).map((o: any) => `${str(o.name)} ${str(o.email)}`);
     st.openTasks++;
+    if (due && due.slice(0, 7) === month) st.openTasksThisMonth++;
     if (due === today) st.tasksDueToday++;
     if (due && due < today) {
       st.tasksOverdue++;
       if ((Date.parse(today) - Date.parse(due)) / 86_400_000 > 30) st.tasksOverdue30++;
     }
-    if (due && due >= lw.from && due <= lw.to && posting.test(str(t.tasklist?.name))) st.postingNotDoneLastWeek++;
+    const cat = projectCategory.get(key) ?? projectCategory.get(str(t.project?.name)) ?? '';
+    if (due && due >= lw.from && due <= lw.to && ownerNames.some((n) => owners.test(n)) && postingProjects.includes(cat)) st.postingNotDoneLastWeek++;
     out.set(key, st);
   }
   return out;
@@ -226,8 +238,14 @@ export async function syncZohoProjects(): Promise<number> {
   const today = todayIst();
   const ids: string[] = [];
   for (const portal of portals) {
-    const stats = taskStats(await fetchOpenTasks(token, portal.id), today);
-    for (const p of (await fetchPortalProjects(token, portal.id)).filter(isLiveProject)) {
+    const live = (await fetchPortalProjects(token, portal.id)).filter(isLiveProject);
+    const category = new Map<string, string>();
+    for (const p of live) {
+      const cat = groupCategory(str(p.group_name)) || splitProjectName(str(p.name)).service;
+      for (const k of [str(p.id), str(p.id_string), str(p.name)]) if (k) category.set(k, cat);
+    }
+    const stats = taskStats(await fetchOpenTasks(token, portal.id), today, category);
+    for (const p of live) {
       const id = `${portal.id}:${str(p.id_string ?? p.id)}`;
       const ts = stats.get(str(p.id)) ?? stats.get(str(p.id_string)) ?? stats.get(str(p.name)) ?? emptyStats();
       const data = Object.fromEntries(Object.entries({ ...mapProject(p, portal.name, today), ...ts } as RecordData).filter(([, v]) => v !== undefined && v !== ''));
