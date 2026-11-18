@@ -275,7 +275,22 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
   const issues = Number(p.bug_count?.open) || 0;
   const hours = (v: unknown) => { const m = str(v).match(/^(\d+)[.:](\d{2})$/); const h = m ? Number(m[1]) + Number(m[2]) / 60 : Number(v); return Number.isFinite(h) && h > 0 ? Math.round(h * 10) / 10 : undefined; };
 
+  const cnt = (o: any, k: 'open' | 'closed') => Number(o?.[k]) || 0;
+  const created = Number(p.created_date_long);
+  const webHost = process.env.ZOHO_PROJECTS_WEB_URL || 'https://projects.zoho.in';
+  const slug = process.env.ZOHO_PROJECTS_PORTAL_SLUG || portalName;
   return {
+    zohoKey: str(p.key) || undefined,
+    zohoStatus: statusName || undefined,
+    zohoStatusColor: str(p.custom_status_color) || undefined,
+    tasksClosed: closed,
+    tasksTotal: open + closed,
+    phasesOpen: cnt(p.milestone_count, 'open'),
+    phasesClosed: cnt(p.milestone_count, 'closed'),
+    issuesOpen: cnt(p.bug_count, 'open'),
+    issuesClosed: cnt(p.bug_count, 'closed'),
+    createdOn: Number.isFinite(created) && created > 0 ? new Date(created + 5.5 * 3600_000).toISOString().slice(0, 19) : undefined,
+    zohoLink: str(p.link?.web?.url) || `${webHost}/portal/${slug}#zp/projects/${str(p.id_string ?? p.id)}/dashboard`,
     company: andersonHint ? 'Anderson' : (process.env.ZOHO_PROJECTS_COMPANY === 'Anderson' ? 'Anderson' : 'Andreal'),
     clientName: client,
     jobId: str(p.key) || str(p.id_string ?? p.id),
@@ -303,8 +318,8 @@ export function mapProject(p: any, portalName: string, today = todayIst()): Reco
   };
 }
 
-/** Only live work reaches the Operations tab: active (not archived) projects that are not Completed/Cancelled/Invoiced. */
-export const isLiveProject = (p: any) => !p._archived && !DONE.test(str(p.custom_status_name ?? p.status));
+/** The Operations tab mirrors Zoho's "Active Projects" list: every project that is not archived. */
+export const isLiveProject = (p: any) => !p._archived;
 
 export async function syncZohoProjects(): Promise<number> {
   const token = await zohoAccessToken('projects');

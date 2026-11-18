@@ -4,6 +4,7 @@ import { DEPARTMENTS, isDeptKey } from '@/config/departments';
 import { listRecords } from '@/server/records';
 import FilterBar from '@/components/layout/FilterBar';
 import RecordTable from '@/components/records/RecordTable';
+import OpsProjectTable from '@/components/records/OpsProjectTable';
 import KpiCard from '@/components/dashboard/KpiCard';
 import { DEPT_PAGE_KPIS, KPI_LINKS } from '@/config/metrics';
 import { getBoard } from '@/server/board';
@@ -42,7 +43,11 @@ export default async function DeptPage({ params, searchParams }: Props) {
           })}
         </div>
       )}
-      <RecordTable key={sp.status ?? ''} dept={dept} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} initialFilter={sp.status} />
+      {dept === 'operations' ? (
+        <OpsProjectTable key={sp.status ?? ''} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} initialFilter={sp.status} />
+      ) : (
+        <RecordTable key={sp.status ?? ''} dept={dept} rows={JSON.parse(JSON.stringify(records))} canEdit={canEdit} company={company} initialFilter={sp.status} />
+      )}
     </div>
   );
 }
