@@ -185,6 +185,18 @@ export async function syncZohoProjects(): Promise<number> {
   return ids.length;
 }
 
+/** Admin diagnostics: raw read-only GET against the Zoho Projects API ({portal} is replaced by the first portal id). */
+export async function zohoProjectsRaw(path: string) {
+  if (!/^\/(api\/v3|restapi)\//.test(path)) throw new Error('path must start with /api/v3/ or /restapi/');
+  const token = await zohoAccessToken('projects');
+  const portals = await zohoProjectsPortals(token);
+  const url = `${await apiBase()}${path.replace('{portal}', portals[0]?.id ?? '')}`;
+  const res = await fetch(url, { headers: { Authorization: `Zoho-oauthtoken ${token}` }, cache: 'no-store' });
+  const text = await res.text();
+  let body: unknown; try { body = JSON.parse(text); } catch { body = text.slice(0, 2000); }
+  return { status: res.status, rateRemaining: res.headers.get('ratelimit-remaining'), body };
+}
+
 /** Admin diagnostics: portals and the raw fields of a couple of projects, or the tasks of one project. */
 export async function zohoProjectsSample(projectId?: string | null) {
   const token = await zohoAccessToken('projects');
