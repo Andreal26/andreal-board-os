@@ -185,11 +185,15 @@ export async function syncZohoProjects(): Promise<number> {
   return ids.length;
 }
 
-/** Admin diagnostics: portals and the raw fields of a couple of projects (to tune the mapping). */
-export async function zohoProjectsSample() {
+/** Admin diagnostics: portals and the raw fields of a couple of projects, or the tasks of one project. */
+export async function zohoProjectsSample(projectId?: string | null) {
   const token = await zohoAccessToken('projects');
   const portals = await zohoProjectsPortals(token);
   const first = portals[0];
+  if (first && projectId) {
+    const body: any = await get(token, `/portal/${first.id}/projects/${projectId}/tasks/?index=1&range=200`);
+    return { tasks: body.tasks ?? [] };
+  }
   const body: any = first ? await get(token, `/portal/${first.id}/projects/?index=1&range=3&status=active`) : {};
   return { apiBase: await apiBase(), portals, sample: body.projects ?? [] };
 }
