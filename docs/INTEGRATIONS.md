@@ -16,13 +16,19 @@ into the existing JSON, so fields people edit by hand (e.g. MQL, SQL, notes on a
 
 Ad platforms sync the previous and the current month on every run, so late-settling numbers are corrected.
 
-## Zoho CRM
-1. https://api-console.zoho.in → **Self Client** → note Client ID / Secret.
-2. Generate a grant code with scope `ZohoCRM.modules.deals.READ`, exchange it for a **refresh token**.
-3. Secrets: `ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`; variable `ZOHO_ENABLED=true`.
-4. Custom field API names differ per org (Setup → Developer Hub → APIs → API names). Defaults match the
-   "Andreal Deals" export: `ZOHO_FIELD_STATUS=Deal_Status` (Hot/Warm/Cold/Won/Lost), `ZOHO_FIELD_COMPANY=WORK_DONE_FOR`
-   (ANDREAL/ANDERSON), `ZOHO_FIELD_PRODUCT`, `ZOHO_FIELD_PROSPECTOR`, `ZOHO_FIELD_LOST_REASON`.
+## Zoho CRM (one-click connect)
+1. https://api-console.zoho.in → **Add Client → Server-based Applications**.
+   - Client name: `Board OS` · Homepage URL: `https://<user>-<space>.hf.space`
+   - Authorized redirect URI: `https://<user>-<space>.hf.space/api/integrations/zoho/callback`
+2. Copy the Client ID and Client Secret into the Space secrets `ZOHO_CLIENT_ID` and `ZOHO_CLIENT_SECRET`
+   (the Space restarts).
+3. Board OS → **Settings → Integrations → Connect Zoho** → approve on Zoho's screen. The refresh token is stored
+   in the database; nobody has to copy it. Use **Sync integrations → Run now** for an immediate sync.
+4. Field names: defaults match Andreal's Zoho (`Deal_Status`, `WORK_DONE_FOR`, `Product`, `Prospector`,
+   `Reason_For_Loss__s`). Override with `ZOHO_FIELD_*` variables if they change.
+
+Every run refreshes all Deals (≈20 API pages for 4,000 deals). Rows imported earlier from a Zoho CSV export are
+adopted by their Zoho deal id, so they are updated instead of duplicated.
 
 ## Meta Ads
 Business Settings → System users → generate a token with `ads_read` for the ad account(s).

@@ -1,6 +1,8 @@
 import { requireUser, isAdmin } from '@/server/auth';
 import { query } from '@/db/client';
 import { INTEGRATIONS, integrationStatus } from '@/server/integrations';
+import { zohoConnection, zohoRedirectUri } from '@/server/integrations/zoho-oauth';
+import ZohoDisconnectButton from '@/components/admin/ZohoDisconnectButton';
 import { mailConfigured, boardEmails } from '@/server/mailer';
 import UsersAdmin from '@/components/admin/UsersAdmin';
 import ChangePassword from '@/components/admin/ChangePassword';
@@ -9,7 +11,8 @@ import DemoDataButtons from '@/components/admin/DemoDataButtons';
 import { jobDefs, jobStates } from '@/server/scheduler';
 import { demoCount } from '@/server/seed';
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ zoho?: string }> }) {
+  const zohoMsg = (await searchParams).zoho;
   const user = await requireUser();
   const admin = isAdmin(user);
   const users = admin ? await query(`SELECT id, email, name, role, departments, company, active, last_login_at FROM users ORDER BY id`) : [];
@@ -22,6 +25,15 @@ export default async function SettingsPage() {
   const states = admin ? new Map((await jobStates()).map((j) => [j.job, j])) : new Map();
   const demoRows = admin ? await demoCount() : 0;
   const schedulerOn = process.env.SCHEDULER_ENABLED !== 'false' && process.env.NODE_ENV === 'production';
+  const statuses = admin ? await Promise.all(INTEGRATIONS.map((i) => integrationStatus(i))) : [];
+  const zoho = admin ? await zohoConnection() : null;
+  const ZOHO_MSG: Record<string, [string, string]> = {
+    connected: ['text-rag-green', 'Zoho connected. Click "Sync integrations → Run now" to pull deals immediately, or wait for the daily sync.'],
+    denied: ['text-rag-amber', 'Zoho connection was cancelled on the Zoho screen.'],
+    'bad-state': ['text-rag-red', 'Zoho connection expired — click Connect Zoho again.'],
+    failed: ['text-rag-red', 'Zoho rejected the connection. Check ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET and that the client\'s redirect URI matches the one shown below.'],
+    'missing-keys': ['text-rag-amber', 'Add the ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET secrets in the Space settings first.'],
+  };
 
   return (
     <div className="space-y-6">
@@ -67,23 +79,43 @@ export default async function SettingsPage() {
 
           <section className="card card-pad">
             <h2 className="mb-3 text-sm font-medium text-white">Integrations</h2>
+            {zohoMsg && ZOHO_MSG[zohoMsg] && <p className={`mb-3 text-sm ${ZOHO_MSG[zohoMsg][0]}`}>{ZOHO_MSG[zohoMsg][1]}</p>}
             <table className="tbl">
               <thead><tr><th>Integration</th><th>Feeds</th><th>Status</th></tr></thead>
               <tbody>
-                {INTEGRATIONS.map((i) => {
-                  const s = integrationStatus(i);
+                {INTEGRATIONS.map((i, idx) => {
+                  const s = statuses[idx];
+                  const isZoho = i.key === 'zoho';
                   return (
                     <tr key={i.key}>
                       <td className="font-medium">{i.name}</td>
                       <td className="whitespace-normal text-gray-400">{i.feeds}</td>
                       <td className="whitespace-normal text-xs">
-                        {s.ready ? <span className="text-rag-green">● Ready</span> : !s.enabled ? <span className="text-gray-400">○ Off — set {i.envFlag}=true</span> : <span className="text-rag-amber">▲ Missing {s.missing.join(', ')}</span>}
+                        {s.ready ? (
+                          <span className="text-rag-green">● Connected{isZoho && zoho?.connectedAt ? ` since ${new Date(zoho.connectedAt).toLocaleDateString('en-GB')}` : ''}</span>
+                        ) : s.missing.length ? (
+                          <span className="text-rag-amber">▲ Add secrets: {s.missing.join(', ')}</span>
+                        ) : isZoho && !s.connected ? (
+                          <span className="text-rag-amber">▲ Keys added — not connected yet</span>
+                        ) : (
+                          <span className="text-gray-400">○ Off — set {i.envFlag}=true</span>
+                        )}
+                        {isZoho && !s.missing.length && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <a className="btn-primary px-3 py-1 text-xs" href="/api/integrations/zoho/connect">{s.connected ? 'Reconnect Zoho' : 'Connect Zoho'}</a>
+                            {zoho?.source === 'database' && <ZohoDisconnectButton />}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
+            <p className="mt-3 text-xs text-gray-500">
+              Zoho setup: in api-console.zoho.in create a <b>Server-based Application</b> with redirect URI <code className="text-teal-300">{zohoRedirectUri()}</code>,
+              add its keys as the <code>ZOHO_CLIENT_ID</code> / <code>ZOHO_CLIENT_SECRET</code> Space secrets, then click Connect Zoho.
+            </p>
             {!!runs.length && (
               <>
                 <h3 className="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400">Recent sync runs</h3>

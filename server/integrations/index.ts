@@ -1,5 +1,6 @@
 import { query, one } from '@/db/client';
 import { syncZoho } from '@/server/integrations/zoho';
+import { zohoConnection } from '@/server/integrations/zoho-oauth';
 import { syncMeta } from '@/server/integrations/meta';
 import { syncGoogleAds } from '@/server/integrations/google-ads';
 import { syncLinkedIn } from '@/server/integrations/linkedin';
@@ -21,7 +22,7 @@ export interface Integration {
 export const INTEGRATIONS: Integration[] = [
   {
     key: 'zoho', name: 'Zoho CRM', feeds: 'Sales (deals → opportunities)', envFlag: 'ZOHO_ENABLED',
-    requiredEnv: ['ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET', 'ZOHO_REFRESH_TOKEN'], run: syncZoho,
+    requiredEnv: ['ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET'], run: syncZoho,
   },
   {
     key: 'meta', name: 'Meta Ads', feeds: 'Marketing (campaign spend, reach, leads per month)', envFlag: 'META_ENABLED',
@@ -37,16 +38,23 @@ export const INTEGRATIONS: Integration[] = [
   },
 ];
 
-export function integrationStatus(i: Integration) {
-  const enabled = process.env[i.envFlag] === 'true';
+/**
+ * An integration is enabled when its flag is "true", or — when the flag is not set at all — as soon as its keys exist.
+ * Zoho additionally needs the "Connect Zoho" step (refresh token in the database or ZOHO_REFRESH_TOKEN).
+ */
+export async function integrationStatus(i: Integration) {
+  const flag = process.env[i.envFlag];
   const missing = i.requiredEnv.filter((k) => !process.env[k]);
-  return { enabled, missing, ready: enabled && missing.length === 0 };
+  const enabled = flag === 'true' || (flag === undefined && missing.length === 0);
+  let connected = true;
+  if (i.key === 'zoho') connected = !!(await zohoConnection()).refreshToken;
+  return { enabled, missing, connected, ready: enabled && missing.length === 0 && connected };
 }
 
 export async function runIntegration(i: Integration) {
-  const st = integrationStatus(i);
+  const st = await integrationStatus(i);
   if (!st.ready) {
-    const msg = !st.enabled ? 'disabled' : `missing ${st.missing.join(', ')}`;
+    const msg = !st.enabled ? 'disabled' : st.missing.length ? `missing ${st.missing.join(', ')}` : 'not connected';
     await query(`INSERT INTO sync_runs (integration, status, message, finished_at) VALUES ($1, 'skipped', $2, now())`, [i.key, msg]);
     return { key: i.key, status: 'skipped', message: msg, rows: 0 };
   }

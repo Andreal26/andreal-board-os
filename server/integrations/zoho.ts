@@ -1,18 +1,23 @@
+import { query } from '@/db/client';
 import { upsertExternal } from '@/server/records';
 import { parseDate } from '@/lib/validation';
 import { fetchJson } from '@/server/integrations/shared';
+import { zohoConnection } from '@/server/integrations/zoho-oauth';
 
 /**
- * Zoho CRM → Sales tab.
- * Setup: create a Self Client in https://api-console.zoho.in, generate a grant token with scope
- * ZohoCRM.modules.deals.READ, exchange it for a refresh token, then fill ZOHO_* in the env.
+ * Zoho CRM → Sales tab (full refresh of all Deals on every run; existing rows are updated in place).
+ * Setup (no tokens to copy): create a "Server-based Application" client in https://api-console.zoho.in,
+ * put ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET in the Space secrets, then click "Connect Zoho" in Settings.
+ * The refresh token is stored in the database. (ZOHO_REFRESH_TOKEN in the env still works as an override.)
  * Custom field API names differ per org — set ZOHO_FIELD_* to match yours (Setup → Developer Hub → APIs → API names).
  */
 const env = (k: string, d = '') => process.env[k] || d;
 
 async function accessToken() {
-  const url = `${env('ZOHO_ACCOUNTS_URL', 'https://accounts.zoho.in')}/oauth/v2/token?` + new URLSearchParams({
-    refresh_token: env('ZOHO_REFRESH_TOKEN'),
+  const conn = await zohoConnection();
+  if (!conn.refreshToken) throw new Error('Zoho is not connected yet — click "Connect Zoho" in Settings');
+  const url = `${conn.accountsUrl}/oauth/v2/token?` + new URLSearchParams({
+    refresh_token: conn.refreshToken,
     client_id: env('ZOHO_CLIENT_ID'),
     client_secret: env('ZOHO_CLIENT_SECRET'),
     grant_type: 'refresh_token',
@@ -36,7 +41,7 @@ export function mapDeal(d: any) {
     company: env('ZOHO_FIELD_COMPANY', 'WORK_DONE_FOR'),
     product: env('ZOHO_FIELD_PRODUCT', 'Product'),
     prospector: env('ZOHO_FIELD_PROSPECTOR', 'Prospector'),
-    lost: env('ZOHO_FIELD_LOST_REASON', 'Reason_For_Loss'),
+    lost: env('ZOHO_FIELD_LOST_REASON', 'Reason_For_Loss__s'),
   };
   const statusRaw = String(name(d[F.status]) || '').trim(); // Hot / Warm / Cold / Won / Lost in Andreal's org
   const stageRaw = String(d.Stage ?? '').toLowerCase();
@@ -65,6 +70,7 @@ export function mapDeal(d: any) {
     actualCloseDate: dealStatus !== 'Open' ? close ?? undefined : undefined,
     dealStatus,
     lostReason: dealStatus === 'Lost' ? name(d[F.lost]) || undefined : undefined,
+    notes: ['Zoho deal: ' + (d.Deal_Name ?? ''), d.WORK_STATUS ? 'Work status: ' + name(d.WORK_STATUS) : ''].filter(Boolean).join('; '),
   };
 }
 
@@ -83,13 +89,29 @@ function mapSource(v: any) {
   return 'Other';
 }
 
+/** Rows imported earlier from a Zoho CSV export carry the Zoho deal id — adopt them so the sync updates them instead of duplicating. */
+async function adoptImportedDeals() {
+  await query(
+    `UPDATE records r SET source = 'zoho', external_id = r.data->>'opportunityId', updated_at = now()
+     WHERE r.dept = 'sales' AND r.source IN ('import', 'manual') AND r.external_id IS NULL
+       AND r.data->>'opportunityId' ~ '^[0-9]{10,}$'
+       AND NOT EXISTS (SELECT 1 FROM records z WHERE z.dept = 'sales' AND z.source = 'zoho' AND z.external_id = r.data->>'opportunityId')`,
+  );
+}
+
+const DEAL_FIELDS = 'Deal_Name,Account_Name,Amount,Stage,Closing_Date,Lead_Source,Owner,Contact_Name,Created_Time,Probability,Deal_Status,Product,Prospector,WORK_DONE_FOR,WORK_STATUS,Reason_For_Loss__s,Modified_Time';
+
 export async function syncZoho(): Promise<number> {
   const token = await accessToken();
-  const base = `${env('ZOHO_API_URL', 'https://www.zohoapis.in')}/crm/${env('ZOHO_API_VERSION', 'v2')}/Deals`;
+  await adoptImportedDeals();
+  const conn = await zohoConnection();
+  const fields = [DEAL_FIELDS, env('ZOHO_FIELD_STATUS'), env('ZOHO_FIELD_COMPANY'), env('ZOHO_FIELD_PRODUCT'), env('ZOHO_FIELD_PROSPECTOR'), env('ZOHO_FIELD_LOST_REASON')]
+    .filter(Boolean).join(',').split(',').filter((v, i, a) => a.indexOf(v) === i).join(',');
+  const base = `${conn.apiUrl}/crm/${env('ZOHO_API_VERSION', 'v2')}/Deals`;
   let page = 1;
   let count = 0;
   for (;;) {
-    const body = await fetchJson(`${base}?page=${page}&per_page=200&sort_by=Modified_Time&sort_order=desc`, {
+    const body = await fetchJson(`${base}?fields=${fields}&page=${page}&per_page=200&sort_by=Modified_Time&sort_order=desc`, {
       headers: { Authorization: `Zoho-oauthtoken ${token}` },
     });
     const deals: any[] = body.data ?? [];
@@ -98,7 +120,7 @@ export async function syncZoho(): Promise<number> {
       await upsertExternal('sales', 'zoho', String(d.id), data);
       count++;
     }
-    if (!body.info?.more_records || page >= 50) break;
+    if (!body.info?.more_records || page >= 100) break;
     page++;
   }
   return count;
