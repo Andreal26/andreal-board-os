@@ -6,8 +6,8 @@
  *        Execute as: Me      Who has access: Anyone
  *      → Deploy → Authorize access (choose your Google account → Advanced → Go to project → Allow).
  *   2. Deploy → Manage deployments → copy the Web app URL (ends in /exec) into WEB_APP_URL below, save.
- *   3. Choose the function "copyBoardOsLink" in the toolbar and click Run (allow the extra permission once).
- *      A "Board OS link" box opens in the sheet tab: click Copy link, then paste it in
+ *   3. Reload the sheet → menu Board OS → Copy link (allow the extra permission once).
+ *      A "Board OS link" box opens: click Copy link, then paste it in
  *      Board OS → Settings → Integrations → Accounts sheet → Connect.
  *
  * The link contains a secret token; without it the web app returns nothing. Read-only: it never changes the sheet.
@@ -53,7 +53,7 @@ function boardOsLink_() {
   return url + '?token=' + token;
 }
 
-/** Opens a box in the sheet with the link and a Copy button (run from the editor while the sheet is open). */
+/** Opens a box in the sheet with the link and a Copy button (menu Board OS → Copy link). */
 function copyBoardOsLink() {
   const link = boardOsLink_();
   const html = HtmlService.createHtmlOutput(
@@ -63,6 +63,11 @@ function copyBoardOsLink() {
     'document.execCommand(\'copy\');this.textContent=\'Copied ✓\'">Copy link</button></div>'
   ).setWidth(620).setHeight(150);
   SpreadsheetApp.getUi().showModalDialog(html, 'Board OS link');
+}
+
+/** Adds a Board OS menu to the sheet (Board OS → Copy link). */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('Board OS').addItem('Copy link', 'copyBoardOsLink').addToUi();
 }
 
 function showBoardOsLink() {

@@ -34,8 +34,8 @@ adopted by their Zoho deal id, so they are updated instead of duplicated.
 Source: "Andreal Accounts 26-27" → **Invoice Responses** tab, one Cashflow row per invoice line.
 1. Open the sheet → **Extensions → Apps Script**, paste `docs/apps-script/accounts-sheet.gs`, save.
 2. **Deploy → New deployment → Web app** · Execute as **Me** · Who has access **Anyone** → Deploy → authorize.
-3. Deploy → Manage deployments → copy the Web app URL (…/exec) into `WEB_APP_URL` in the script, save, then run
-   `copyBoardOsLink` while the sheet is open: a box with a **Copy link** button appears in the sheet.
+3. Deploy → Manage deployments → copy the Web app URL (…/exec) into `WEB_APP_URL` in the script, save, reload the
+   sheet and use the new menu **Board OS → Copy link**: a box with a **Copy link** button appears.
 4. Board OS → **Settings → Integrations → Accounts sheet** → paste → **Connect** (runs the first sync).
 
 Mapping: Bill Amount with GST → invoice raised / collections due · "Remarks (Billing wise payment recv)" → collections
