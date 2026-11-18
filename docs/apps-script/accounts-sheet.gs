@@ -5,13 +5,16 @@
  *   1. Deploy → New deployment → type "Web app"
  *        Execute as: Me      Who has access: Anyone
  *      → Deploy → Authorize access (choose your Google account → Advanced → Go to project → Allow).
- *   2. Back in the editor choose the function "showBoardOsLink" in the toolbar and click Run.
- *      The Execution log prints the link to paste into Board OS → Settings → Integrations → Accounts sheet.
+ *   2. Deploy → Manage deployments → copy the Web app URL (ends in /exec) into WEB_APP_URL below, save.
+ *   3. Choose the function "copyBoardOsLink" in the toolbar and click Run (allow the extra permission once).
+ *      A "Board OS link" box opens in the sheet tab: click Copy link, then paste it in
+ *      Board OS → Settings → Integrations → Accounts sheet → Connect.
  *
  * The link contains a secret token; without it the web app returns nothing. Read-only: it never changes the sheet.
  * To cut access, run "resetToken" (then paste the new link in Board OS) or archive the deployment.
  */
 const TAB = 'Invoice Responses';
+const WEB_APP_URL = ''; // Deploy → Manage deployments → Web app URL (…/exec)
 
 function doGet(e) {
   const token = PropertiesService.getScriptProperties().getProperty('BOARD_OS_TOKEN');
@@ -41,18 +44,34 @@ function doGet(e) {
   return json_({ sheet: TAB, fetchedAt: new Date().toISOString(), header: header, rows: rows });
 }
 
-function showBoardOsLink() {
+function boardOsLink_() {
   const props = PropertiesService.getScriptProperties();
   let token = props.getProperty('BOARD_OS_TOKEN');
   if (!token) { token = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, ''); props.setProperty('BOARD_OS_TOKEN', token); }
-  const url = ScriptApp.getService().getUrl();
-  if (!url) { Logger.log('Deploy the script as a Web app first (Deploy → New deployment → Web app), then run this again.'); return; }
-  Logger.log('Paste this link in Board OS → Settings → Integrations → Accounts sheet:\n' + url + '?token=' + token);
+  const url = WEB_APP_URL || ScriptApp.getService().getUrl();
+  if (!url || !/\/exec$/.test(url)) throw new Error('Set WEB_APP_URL to the Web app URL from Deploy → Manage deployments (it ends in /exec).');
+  return url + '?token=' + token;
+}
+
+/** Opens a box in the sheet with the link and a Copy button (run from the editor while the sheet is open). */
+function copyBoardOsLink() {
+  const link = boardOsLink_();
+  const html = HtmlService.createHtmlOutput(
+    '<div style="font:13px Arial">Paste this in Board OS → Settings → Integrations → Accounts sheet → Connect.<br><br>' +
+    '<input id="l" readonly style="width:100%;padding:6px" value="' + link + '"><br><br>' +
+    '<button id="b" style="padding:6px 14px" onclick="var l=document.getElementById(\'l\');l.focus();l.select();' +
+    'document.execCommand(\'copy\');this.textContent=\'Copied ✓\'">Copy link</button></div>'
+  ).setWidth(620).setHeight(150);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Board OS link');
+}
+
+function showBoardOsLink() {
+  Logger.log(boardOsLink_());
 }
 
 function resetToken() {
   PropertiesService.getScriptProperties().deleteProperty('BOARD_OS_TOKEN');
-  showBoardOsLink();
+  boardOsLink_();
 }
 
 function json_(o) {

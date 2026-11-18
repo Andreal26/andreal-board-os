@@ -126,7 +126,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               Zoho setup: in api-console.zoho.in create a <b>Server-based Application</b> with redirect URI <code className="text-teal-300">{zohoRedirectUri()}</code>,
               add its keys as the <code>ZOHO_CLIENT_ID</code> / <code>ZOHO_CLIENT_SECRET</code> Space secrets, then click Connect Zoho.
               <br />Accounts sheet setup: paste <code>docs/apps-script/accounts-sheet.gs</code> into the sheet&apos;s Extensions → Apps Script, deploy it as a
-              Web app (Execute as: Me · Access: Anyone), run <code>showBoardOsLink</code> and paste the logged link above.
+              Web app (Execute as: Me · Access: Anyone), set <code>WEB_APP_URL</code>, run <code>copyBoardOsLink</code> and paste the copied link above.
             </p>
             {!!runs.length && (
               <>
