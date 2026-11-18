@@ -2,7 +2,7 @@ import { query } from '@/db/client';
 import { upsertExternal } from '@/server/records';
 import { parseDate } from '@/lib/validation';
 import { fetchJson } from '@/server/integrations/shared';
-import { zohoConnection } from '@/server/integrations/zoho-oauth';
+import { zohoAccessToken, zohoConnection } from '@/server/integrations/zoho-oauth';
 
 /**
  * Zoho CRM → Sales tab (full refresh of all Deals on every run; existing rows are updated in place).
@@ -13,19 +13,7 @@ import { zohoConnection } from '@/server/integrations/zoho-oauth';
  */
 const env = (k: string, d = '') => process.env[k] || d;
 
-async function accessToken() {
-  const conn = await zohoConnection();
-  if (!conn.refreshToken) throw new Error('Zoho is not connected yet — click "Connect Zoho" in Settings');
-  const url = `${conn.accountsUrl}/oauth/v2/token?` + new URLSearchParams({
-    refresh_token: conn.refreshToken,
-    client_id: env('ZOHO_CLIENT_ID'),
-    client_secret: env('ZOHO_CLIENT_SECRET'),
-    grant_type: 'refresh_token',
-  });
-  const body = await fetchJson(url, { method: 'POST' });
-  if (!body.access_token) throw new Error(`Zoho token error: ${JSON.stringify(body).slice(0, 200)}`);
-  return body.access_token as string;
-}
+const accessToken = () => zohoAccessToken('crm');
 
 const STAGE_MAP: Record<string, string> = {
   qualification: 'Discovery', 'needs analysis': 'Discovery', 'value proposition': 'Proposal',

@@ -13,8 +13,10 @@ import DemoDataButtons from '@/components/admin/DemoDataButtons';
 import { jobDefs, jobStates } from '@/server/scheduler';
 import { demoCount } from '@/server/seed';
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ zoho?: string }> }) {
-  const zohoMsg = (await searchParams).zoho;
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ zoho?: string; product?: string }> }) {
+  const sp = await searchParams;
+  const zohoMsg = sp.zoho;
+  const zohoWhich = sp.product === 'projects' ? 'Zoho Projects' : 'Zoho';
   const user = await requireUser();
   const admin = isAdmin(user);
   const users = admin ? await query(`SELECT id, email, name, role, departments, company, active, last_login_at FROM users ORDER BY id`) : [];
@@ -28,13 +30,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const demoRows = admin ? await demoCount() : 0;
   const schedulerOn = process.env.SCHEDULER_ENABLED !== 'false' && process.env.NODE_ENV === 'production';
   const statuses = admin ? await Promise.all(INTEGRATIONS.map((i) => integrationStatus(i))) : [];
-  const zoho = admin ? await zohoConnection() : null;
+  const zoho = admin ? await zohoConnection('crm') : null;
+  const zohoProj = admin ? await zohoConnection('projects') : null;
   const sheet = admin ? await accountsSheetConnection() : null;
   const ZOHO_MSG: Record<string, [string, string]> = {
-    connected: ['text-rag-green', 'Zoho connected. Click "Sync integrations → Run now" to pull deals immediately, or wait for the daily sync.'],
-    denied: ['text-rag-amber', 'Zoho connection was cancelled on the Zoho screen.'],
-    'bad-state': ['text-rag-red', 'Zoho connection expired — click Connect Zoho again.'],
-    failed: ['text-rag-red', 'Zoho rejected the connection. Check ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET and that the client\'s redirect URI matches the one shown below.'],
+    connected: ['text-rag-green', `${zohoWhich} connected. Click "Sync integrations → Run now" to pull data immediately, or wait for the daily sync.`],
+    denied: ['text-rag-amber', `${zohoWhich} connection was cancelled on the Zoho screen.`],
+    'bad-state': ['text-rag-red', `${zohoWhich} connection expired — click Connect again.`],
+    failed: ['text-rag-red', `Zoho rejected the ${zohoWhich} connection. Check ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET and that the client\'s redirect URI matches the one shown below.`],
     'missing-keys': ['text-rag-amber', 'Add the ZOHO_CLIENT_ID and ZOHO_CLIENT_SECRET secrets in the Space settings first.'],
   };
 
@@ -89,8 +92,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 {INTEGRATIONS.map((i, idx) => {
                   const s = statuses[idx];
                   const isZoho = i.key === 'zoho';
+                  const isZohoProj = i.key === 'zoho_projects';
                   const isSheet = i.key === 'accounts_sheet';
-                  const since = isZoho ? zoho?.connectedAt : isSheet ? sheet?.connectedAt : null;
+                  const since = isZoho ? zoho?.connectedAt : isZohoProj ? zohoProj?.connectedAt : isSheet ? sheet?.connectedAt : null;
                   return (
                     <tr key={i.key}>
                       <td className="font-medium">{i.name}</td>
@@ -100,7 +104,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                           <span className="text-rag-green">● Connected{since ? ` since ${new Date(since).toLocaleDateString('en-GB')}` : ''}</span>
                         ) : s.missing.length ? (
                           <span className="text-rag-amber">▲ Add secrets: {s.missing.join(', ')}</span>
-                        ) : isZoho && !s.connected ? (
+                        ) : (isZoho || isZohoProj) && !s.connected ? (
                           <span className="text-rag-amber">▲ Keys added — not connected yet</span>
                         ) : isSheet && !s.connected ? (
                           <span className="text-rag-amber">▲ Paste the Apps Script link below</span>
@@ -111,6 +115,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                           <div className="mt-2 flex flex-wrap items-center gap-2">
                             <a className="btn-primary px-3 py-1 text-xs" href="/api/integrations/zoho/connect">{s.connected ? 'Reconnect Zoho' : 'Connect Zoho'}</a>
                             {zoho?.source === 'database' && <ZohoDisconnectButton />}
+                          </div>
+                        )}
+                        {isZohoProj && !s.missing.length && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <a className="btn-primary px-3 py-1 text-xs" href="/api/integrations/zoho/connect?product=projects">{s.connected ? 'Reconnect Zoho Projects' : 'Connect Zoho Projects'}</a>
+                            {zohoProj?.source === 'database' && <ZohoDisconnectButton product="projects" />}
                           </div>
                         )}
                         {isSheet && s.enabled && (

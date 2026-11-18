@@ -5,6 +5,7 @@ import { syncMeta } from '@/server/integrations/meta';
 import { syncGoogleAds } from '@/server/integrations/google-ads';
 import { syncLinkedIn } from '@/server/integrations/linkedin';
 import { syncAccountsSheet, accountsSheetConnection } from '@/server/integrations/accounts-sheet';
+import { syncZohoProjects } from '@/server/integrations/zoho-projects';
 export { syncMonths, fetchJson } from '@/server/integrations/shared';
 
 /**
@@ -24,6 +25,10 @@ export const INTEGRATIONS: Integration[] = [
   {
     key: 'zoho', name: 'Zoho CRM', feeds: 'Sales (deals → opportunities)', envFlag: 'ZOHO_ENABLED',
     requiredEnv: ['ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET'], run: syncZoho,
+  },
+  {
+    key: 'zoho_projects', name: 'Zoho Projects', feeds: 'Operations (projects → jobs)', envFlag: 'ZOHO_PROJECTS_ENABLED',
+    requiredEnv: ['ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET'], run: syncZohoProjects,
   },
   {
     key: 'accounts_sheet', name: 'Accounts sheet (Google Sheets)', feeds: 'Cashflow (invoices, collections, receivables ageing)', envFlag: 'ACCOUNTS_SHEET_ENABLED',
@@ -52,7 +57,8 @@ export async function integrationStatus(i: Integration) {
   const missing = i.requiredEnv.filter((k) => !process.env[k]);
   const enabled = flag === 'true' || (flag === undefined && missing.length === 0);
   let connected = true;
-  if (i.key === 'zoho') connected = !!(await zohoConnection()).refreshToken;
+  if (i.key === 'zoho') connected = !!(await zohoConnection('crm')).refreshToken;
+  if (i.key === 'zoho_projects') connected = !!(await zohoConnection('projects')).refreshToken;
   if (i.key === 'accounts_sheet') connected = !!(await accountsSheetConnection()).url;
   return { enabled, missing, connected, ready: enabled && missing.length === 0 && connected };
 }

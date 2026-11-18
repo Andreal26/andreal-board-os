@@ -2,13 +2,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function ZohoDisconnectButton() {
+export default function ZohoDisconnectButton({ product = 'crm' }: { product?: 'crm' | 'projects' }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   async function go() {
-    if (!confirm('Disconnect Zoho? The daily sync stops until you connect again. Synced deals stay.')) return;
+    if (!confirm(`Disconnect Zoho ${product === 'crm' ? 'CRM' : 'Projects'}? The daily sync stops until you connect again. Synced rows stay.`)) return;
     setBusy(true);
-    await fetch('/api/integrations/zoho/disconnect', { method: 'POST' });
+    await fetch(`/api/integrations/zoho/disconnect?product=${product}`, { method: 'POST' });
     setBusy(false);
     router.refresh();
   }

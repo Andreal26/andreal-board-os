@@ -30,6 +30,16 @@ Ad platforms sync the previous and the current month on every run, so late-settl
 Every run refreshes all Deals (≈20 API pages for 4,000 deals). Rows imported earlier from a Zoho CSV export are
 adopted by their Zoho deal id, so they are updated instead of duplicated.
 
+## Zoho Projects → Operations
+Uses the same Zoho client as CRM, but its own connection (Projects can be a different Zoho organisation).
+Settings → Integrations → **Connect Zoho Projects** → approve. Every sync reads the **Projects** list (active and archived)
+of every portal the user can see (`ZOHO_PROJECTS_PORTAL_IDS` to limit) — one Operations row per project:
+owner, start → committed date, % complete (closed ÷ all tasks), status → stage/delivery status, overdue → Delayed + risk.
+Client and service come from custom fields named Client / Service when present, otherwise from the project name
+("Baldwin Patna DM Dec 2026" → client Baldwin Patna, Digital Marketing). Company defaults to Andreal
+(`ZOHO_PROJECTS_COMPANY=Anderson` to change; a custom field "Company" containing Anderson wins).
+`/api/integrations/zoho-projects/sample` (admin) shows the raw project fields for tuning.
+
 ## Accounts sheet → Cashflow (Google Sheets, free)
 Source: "Andreal Accounts 26-27" → **Invoice Responses** tab, one Cashflow row per invoice line.
 1. Open the sheet → **Extensions → Apps Script**, paste `docs/apps-script/accounts-sheet.gs`, save.
