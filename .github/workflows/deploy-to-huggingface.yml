@@ -1,0 +1,41 @@
+# Deploys this repo to the Hugging Face Space on every push to main.
+# GitHub is the source of truth: the Space is overwritten with the GitHub version.
+# Requires the repository secret HF_TOKEN (a Hugging Face token with write access to the Space).
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hf
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+
+  deploy:
+    name: Push to Hugging Face
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Push to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then echo "::error::Add the HF_TOKEN repository secret first"; exit 1; fi
+          git push --force "https://andreal26:${HF_TOKEN}@huggingface.co/spaces/andreal26/andreal-board-os" HEAD:main
