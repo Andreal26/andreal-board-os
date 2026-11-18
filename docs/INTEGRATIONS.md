@@ -30,6 +30,19 @@ Ad platforms sync the previous and the current month on every run, so late-settl
 Every run refreshes all Deals (≈20 API pages for 4,000 deals). Rows imported earlier from a Zoho CSV export are
 adopted by their Zoho deal id, so they are updated instead of duplicated.
 
+## Accounts sheet → Cashflow (Google Sheets, free)
+Source: "Andreal Accounts 26-27" → **Invoice Responses** tab, one Cashflow row per invoice line.
+1. Open the sheet → **Extensions → Apps Script**, paste `docs/apps-script/accounts-sheet.gs`, save.
+2. **Deploy → New deployment → Web app** · Execute as **Me** · Who has access **Anyone** → Deploy → authorize.
+3. Run `showBoardOsLink` and copy the link from the Execution log (it carries a secret token).
+4. Board OS → **Settings → Integrations → Accounts sheet** → paste → **Connect** (runs the first sync).
+
+Mapping: Bill Amount with GST → invoice raised / collections due · "Remarks (Billing wise payment recv)" → collections
+received · pending = due − received, aged by invoice date into 0–30 / 31–60 / 61–90 / 90+ days (re-aged every sync) ·
+Non Billed lines → unbilled WIP · billing account ATPL → Anderson, all others → Andreal (`ACCOUNTS_ANDERSON_ACCOUNTS`).
+Collections are dated by invoice date. Rows removed from the sheet are removed from Board OS on the next sync.
+Manual fields (CEO decision, payment rows, bank balance) are never overwritten.
+
 ## Meta Ads
 Business Settings → System users → generate a token with `ads_read` for the ad account(s).
 `META_ACCESS_TOKEN`, `META_AD_ACCOUNT_IDS` (numbers, comma-separated, no `act_`), `META_COMPANY`, `META_ENABLED=true`.

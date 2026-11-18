@@ -3,6 +3,8 @@ import { query } from '@/db/client';
 import { INTEGRATIONS, integrationStatus } from '@/server/integrations';
 import { zohoConnection, zohoRedirectUri } from '@/server/integrations/zoho-oauth';
 import ZohoDisconnectButton from '@/components/admin/ZohoDisconnectButton';
+import AccountsSheetConnect from '@/components/admin/AccountsSheetConnect';
+import { accountsSheetConnection } from '@/server/integrations/accounts-sheet';
 import { mailConfigured, boardEmails } from '@/server/mailer';
 import UsersAdmin from '@/components/admin/UsersAdmin';
 import ChangePassword from '@/components/admin/ChangePassword';
@@ -27,6 +29,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const schedulerOn = process.env.SCHEDULER_ENABLED !== 'false' && process.env.NODE_ENV === 'production';
   const statuses = admin ? await Promise.all(INTEGRATIONS.map((i) => integrationStatus(i))) : [];
   const zoho = admin ? await zohoConnection() : null;
+  const sheet = admin ? await accountsSheetConnection() : null;
   const ZOHO_MSG: Record<string, [string, string]> = {
     connected: ['text-rag-green', 'Zoho connected. Click "Sync integrations → Run now" to pull deals immediately, or wait for the daily sync.'],
     denied: ['text-rag-amber', 'Zoho connection was cancelled on the Zoho screen.'],
@@ -86,17 +89,21 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 {INTEGRATIONS.map((i, idx) => {
                   const s = statuses[idx];
                   const isZoho = i.key === 'zoho';
+                  const isSheet = i.key === 'accounts_sheet';
+                  const since = isZoho ? zoho?.connectedAt : isSheet ? sheet?.connectedAt : null;
                   return (
                     <tr key={i.key}>
                       <td className="font-medium">{i.name}</td>
                       <td className="whitespace-normal text-gray-400">{i.feeds}</td>
                       <td className="whitespace-normal text-xs">
                         {s.ready ? (
-                          <span className="text-rag-green">● Connected{isZoho && zoho?.connectedAt ? ` since ${new Date(zoho.connectedAt).toLocaleDateString('en-GB')}` : ''}</span>
+                          <span className="text-rag-green">● Connected{since ? ` since ${new Date(since).toLocaleDateString('en-GB')}` : ''}</span>
                         ) : s.missing.length ? (
                           <span className="text-rag-amber">▲ Add secrets: {s.missing.join(', ')}</span>
                         ) : isZoho && !s.connected ? (
                           <span className="text-rag-amber">▲ Keys added — not connected yet</span>
+                        ) : isSheet && !s.connected ? (
+                          <span className="text-rag-amber">▲ Paste the Apps Script link below</span>
                         ) : (
                           <span className="text-gray-400">○ Off — set {i.envFlag}=true</span>
                         )}
@@ -105,6 +112,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                             <a className="btn-primary px-3 py-1 text-xs" href="/api/integrations/zoho/connect">{s.connected ? 'Reconnect Zoho' : 'Connect Zoho'}</a>
                             {zoho?.source === 'database' && <ZohoDisconnectButton />}
                           </div>
+                        )}
+                        {isSheet && s.enabled && (
+                          <div className="mt-2"><AccountsSheetConnect connected={s.connected} fromDb={sheet?.source === 'database'} /></div>
                         )}
                       </td>
                     </tr>
@@ -115,6 +125,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <p className="mt-3 text-xs text-gray-500">
               Zoho setup: in api-console.zoho.in create a <b>Server-based Application</b> with redirect URI <code className="text-teal-300">{zohoRedirectUri()}</code>,
               add its keys as the <code>ZOHO_CLIENT_ID</code> / <code>ZOHO_CLIENT_SECRET</code> Space secrets, then click Connect Zoho.
+              <br />Accounts sheet setup: paste <code>docs/apps-script/accounts-sheet.gs</code> into the sheet&apos;s Extensions → Apps Script, deploy it as a
+              Web app (Execute as: Me · Access: Anyone), run <code>showBoardOsLink</code> and paste the logged link above.
             </p>
             {!!runs.length && (
               <>
