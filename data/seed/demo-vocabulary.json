@@ -1,0 +1,111 @@
+{
+  "_note": "Vocabulary used only to generate demo rows (source = \"demo\"). Real data is entered in the app or imported by CSV.",
+  "clients": [
+    "Baldwin School",
+    "GD Goenka Kolkata",
+    "St. Xavier's Hooghly",
+    "Meena Paradise",
+    "Greentech Residency",
+    "Brustro",
+    "EEPC India",
+    "Samarth Elder Care",
+    "Pinax Steel",
+    "Jayesh Logistics",
+    "Apollo",
+    "Dhaga & Drama",
+    "Rainbow Buds",
+    "ZLS",
+    "Hotel Soot"
+  ],
+  "services": {
+    "Andreal": [
+      "SMO",
+      "SEO",
+      "Informative Website",
+      "Meta Ads",
+      "Brand Identity",
+      "AR Activation",
+      "3D Walkthrough"
+    ],
+    "Anderson": [
+      "Brochure",
+      "Annual Report Print",
+      "Diary",
+      "Coffee Table Book",
+      "Table Calendar",
+      "Packaging"
+    ]
+  },
+  "salesPeople": [
+    "Abhisek Ghosh",
+    "Palash Diasi",
+    "Rishika Kajaria",
+    "Quazi",
+    "Suman",
+    "Imran"
+  ],
+  "jobOwners": [
+    "Debak Giri",
+    "Karuna",
+    "Muskan",
+    "Soudipta",
+    "Susmita"
+  ],
+  "roles": [
+    [
+      "Design",
+      "Senior Designer"
+    ],
+    [
+      "Design",
+      "Designer"
+    ],
+    [
+      "Digital Marketing",
+      "Performance Marketer"
+    ],
+    [
+      "Digital Marketing",
+      "Content Writer"
+    ],
+    [
+      "Website",
+      "Developer"
+    ],
+    [
+      "Immersive",
+      "3D / AR Artist"
+    ],
+    [
+      "Sales",
+      "BDM"
+    ],
+    [
+      "Client Servicing",
+      "Account Manager"
+    ],
+    [
+      "Print / Production",
+      "Production Manager"
+    ],
+    [
+      "Accounts",
+      "Accountant"
+    ]
+  ],
+  "demoTargets": {
+    "mkt_spend": 200000,
+    "mkt_leads": 500,
+    "mkt_cpl": 400,
+    "mkt_mql": 30,
+    "mkt_sql": 6,
+    "sales_weighted_pipeline": 1500000,
+    "sales_won_value": 1000000,
+    "sales_deals_won": 8,
+    "cash_collections": 1500000,
+    "cash_net": 300000,
+    "hr_utilization": 75,
+    "ops_contribution_pct": 45,
+    "ops_gross_contribution": 600000
+  }
+}

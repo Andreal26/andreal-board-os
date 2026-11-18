@@ -1,0 +1,104 @@
+{
+  "_source": "Board Dashboard (05_2026).xlsx → 08_RnD_Innovation (stage mapped to the RnDStage list; original text kept in workbookStatus)",
+  "initiatives": [
+    {
+      "company": "Andreal",
+      "initiativeName": "Design System Generation Workflow",
+      "category": "Design",
+      "objective": "Create Custom Design Systems for Input into Agentic AI",
+      "problem": "A complete design rules document for various Design processes and outputs",
+      "startDate": "25/03/2026",
+      "stage": "Research",
+      "priority": "Medium",
+      "workbookStatus": "Design System generation recreation as per AI systems"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Landing Page Generation Workflow",
+      "category": "Design",
+      "objective": "Generate Landing Pages Based using Agentic AI systems or Tools",
+      "problem": "Generating Landing Pages based on Branding information",
+      "startDate": null,
+      "stage": "Research",
+      "priority": "Medium",
+      "workbookStatus": "Revamp - Landing Page generation recreation as per AI systems"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Slides/Deck Generation Workflow",
+      "category": "Design",
+      "objective": "Generate Slides/Deck Presentations Based using Agentic AI systems or Tools",
+      "problem": "Generating Slides/Deck Presentations based on Branding information",
+      "startDate": null,
+      "stage": "Idea",
+      "priority": "Medium",
+      "workbookStatus": "Not Started"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Brochure/Print Generation Workflow",
+      "category": "Design",
+      "objective": "Generate Brochure/Print Based using Agentic AI systems or Tools",
+      "problem": "Generating Brochures/Print based on Branding information",
+      "startDate": null,
+      "stage": "Idea",
+      "priority": "Medium",
+      "workbookStatus": "Not Started"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Static Post Generation Workflow",
+      "category": "Design",
+      "objective": "Generate Static Post Based using Agentic AI systems or Tools",
+      "problem": "Generating Static Posts based on Branding information",
+      "startDate": null,
+      "stage": "Research",
+      "priority": "Medium",
+      "workbookStatus": "Revamp - Static Post generation recreation as per AI systems"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Annual Report Microsite Generation",
+      "category": "Design",
+      "objective": "Generate Annual Report Based using Agentic AI systems or Tools",
+      "problem": "Generating Annual Reports Microsite based on Branding information",
+      "startDate": "2026-04-03",
+      "stage": "Research",
+      "priority": "Medium",
+      "workbookStatus": "Revamp - Annual Report microsite generation recreation as per AI systems"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Video Generation Workflow",
+      "category": "Video",
+      "objective": "Generate Video Based using Agentic AI systems or Tools",
+      "problem": "Generating Videos based on Branding information",
+      "startDate": "16/04/2026",
+      "stage": "Prototype",
+      "priority": "Medium",
+      "workbookStatus": "In Progress"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Design Audit Workflow",
+      "category": "Design",
+      "objective": "AI Audit for Designs",
+      "problem": "Understanding Design Gaps with Expert AI Analysis Module",
+      "startDate": null,
+      "stage": "Idea",
+      "priority": "Medium",
+      "workbookStatus": "Not Started"
+    },
+    {
+      "company": "Andreal",
+      "initiativeName": "Annual Report Audit",
+      "category": "Design",
+      "objective": "AI Audit for Annual Reports",
+      "problem": "Understanding Annual Report Gaps with Expert AI Analysis Module",
+      "startDate": "2026-03-04",
+      "stage": "Launch",
+      "priority": "Medium",
+      "workbookStatus": "Delivered"
+    }
+  ]
+}

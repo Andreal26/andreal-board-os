@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Poppins:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body { background: #0b0d10; color: #e8eaed; }
+body { font-family: Poppins, ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+
+@layer components {
+  .card { @apply rounded-xl border border-ink-700 bg-ink-850; }
+  .card-pad { @apply p-4 md:p-5; }
+  .h-display { @apply font-display font-extrabold tracking-tight text-white; }
+  .kicker { @apply text-[11px] uppercase tracking-[0.18em] text-teal-400; }
+  .muted { @apply text-ink-500; }
+  .label { @apply mb-1 block text-xs font-medium text-gray-400; }
+  .input { @apply w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-gray-100 placeholder:text-ink-500 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:opacity-60; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-teal-500 text-ink-950 hover:bg-teal-400; }
+  .btn-ghost { @apply btn border border-ink-600 text-gray-200 hover:border-ink-500 hover:bg-ink-800; }
+  .btn-danger { @apply btn border border-coral-500/60 text-coral-400 hover:bg-coral-500/10; }
+  .tbl { @apply w-full text-left text-sm; }
+  .tbl th { @apply whitespace-nowrap border-b border-ink-700 px-3 py-2 text-xs font-medium uppercase tracking-wide text-gray-400; }
+  .tbl td { @apply whitespace-nowrap border-b border-ink-800 px-3 py-2 text-gray-200; }
+  .tbl tbody tr:hover td { @apply bg-ink-800/60; }
+}
+
+@media print {
+  html, body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .card { border-color: #ddd !important; background: #fff !important; }
+  .print-dark-text, .print-dark-text * { color: #111 !important; }
+}
