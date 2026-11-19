@@ -61,7 +61,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <h3 className="pt-2 text-xs font-medium uppercase tracking-wider text-gray-400">
               Scheduled jobs — built-in scheduler {schedulerOn ? <span className="text-rag-green">● running</span> : <span className="text-gray-500">○ off (starts in production unless SCHEDULER_ENABLED=false)</span>} · India time
             </h3>
-            <table className="tbl">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
               <thead><tr><th>Job</th><th>Runs</th><th>Last run</th><th>Result</th><th></th></tr></thead>
               <tbody>
                 {jobDefs().map((d) => {
@@ -77,7 +77,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
             <h3 className="pt-2 text-xs font-medium uppercase tracking-wider text-gray-400">Demo data</h3>
             <p className="text-xs text-gray-500">Demo rows are marked source = &quot;demo&quot; so you can show the board before real data is entered, then remove them in one click.</p>
             <DemoDataButtons demoRows={demoRows} />
@@ -86,7 +86,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <section className="card card-pad">
             <h2 className="mb-3 text-sm font-medium text-white">Integrations</h2>
             {zohoMsg && ZOHO_MSG[zohoMsg] && <p className={`mb-3 text-sm ${ZOHO_MSG[zohoMsg][0]}`}>{ZOHO_MSG[zohoMsg][1]}</p>}
-            <table className="tbl">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
               <thead><tr><th>Integration</th><th>Feeds</th><th>Status</th></tr></thead>
               <tbody>
                 {INTEGRATIONS.map((i, idx) => {
@@ -131,9 +131,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
             <p className="mt-3 text-xs text-gray-500">
-              Zoho setup: in api-console.zoho.in create a <b>Server-based Application</b> with redirect URI <code className="text-teal-300">{zohoRedirectUri()}</code>,
+              Zoho setup: in api-console.zoho.in create a <b>Server-based Application</b> with redirect URI <code className="break-all text-teal-300">{zohoRedirectUri()}</code>,
               add its keys as the <code>ZOHO_CLIENT_ID</code> / <code>ZOHO_CLIENT_SECRET</code> Space secrets, then click Connect Zoho.
               <br />Accounts sheet setup: paste <code>docs/apps-script/accounts-sheet.gs</code> into the sheet&apos;s Extensions → Apps Script, deploy it as a
               Web app (Execute as: Me · Access: Anyone), set <code>WEB_APP_URL</code>, reload the sheet, use the menu <b>Board OS → Copy link</b> and paste the link above.
@@ -141,7 +141,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             {!!runs.length && (
               <>
                 <h3 className="mb-2 mt-4 text-xs font-medium uppercase tracking-wider text-gray-400">Recent sync runs</h3>
-                <table className="tbl">
+                <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
                   <tbody>
                     {runs.map((r) => (
                       <tr key={r.id}>
@@ -151,7 +151,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </>
             )}
           </section>
@@ -160,14 +160,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
           <section className="card card-pad">
             <h2 className="mb-3 text-sm font-medium text-white">Audit trail (latest 20)</h2>
-            <table className="tbl">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
               <tbody>
                 {audit.map((a, i) => (
                   <tr key={i}><td className="text-xs">{new Date(a.at).toLocaleString('en-GB')}</td><td>{a.name ?? 'system'}</td><td>{a.action}</td><td>{a.dept ?? ''}</td><td>{a.record_id ?? ''}</td></tr>
                 ))}
                 {!audit.length && <tr><td className="text-ink-500">No activity yet.</td></tr>}
               </tbody>
-            </table>
+            </table></div>
           </section>
         </>
       )}

@@ -25,7 +25,7 @@ export default async function WeeklyPack() {
 
       <section className="card card-pad">
         <h2 className="mb-3 text-sm font-medium text-white">1 · Department health</h2>
-        <table className="tbl">
+        <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
           <tbody>
             {DEPT_KEYS.map((d) => (
               <tr key={d}>
@@ -36,7 +36,7 @@ export default async function WeeklyPack() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <section className="card card-pad">
@@ -52,7 +52,7 @@ export default async function WeeklyPack() {
 
       <section className="card card-pad">
         <h2 className="mb-3 text-sm font-medium text-white">3 · Key numbers</h2>
-        <table className="tbl">
+        <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
           <thead><tr><th>Metric</th><th className="text-right">Actual</th><th className="text-right">Target</th><th>Status</th><th className="text-right">Δ vs last week</th></tr></thead>
           <tbody>
             {EXECUTIVE_METRICS.map((id) => {
@@ -72,7 +72,7 @@ export default async function WeeklyPack() {
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       </section>
 
       <section className="card card-pad">

@@ -27,7 +27,7 @@ export default async function OpsTasksPage({ params, searchParams }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link href={`/d/operations${company !== 'All' ? `?company=${company}` : ''}`} className="text-xs text-teal-300 hover:underline">← Operations</Link>
-          <h1 className="h-display mt-1 text-3xl">{TASK_KINDS[kind].label}</h1>
+          <h1 className="h-display mt-1 text-2xl sm:text-3xl">{TASK_KINDS[kind].label}</h1>
           <p className="mt-1 text-sm text-gray-400">Open tasks from Zoho Projects (live projects, as of the last sync). Click a task to open it in Zoho.</p>
         </div>
         <FilterBar company={company} period="MTD" showPeriod={false} lockCompany={user.company !== 'All'} />
@@ -41,7 +41,28 @@ export default async function OpsTasksPage({ params, searchParams }: Props) {
         ))}
       </div>
 
-      <div className="card overflow-x-auto">
+      {/* Phones: one card per task */}
+      <div className="space-y-2 md:hidden">
+        {tasks.map((t) => {
+          const late = t.due_date && t.due_date < today ? Math.round((Date.parse(today) - Date.parse(t.due_date)) / 86_400_000) : 0;
+          return (
+            <a key={`m-${t.task_key}-${t.link}`} href={t.link} target="_blank" rel="noopener noreferrer" className="card block p-3">
+              <div className="text-[11px] text-gray-500">{t.task_key} · {t.tasklist}</div>
+              <div className="font-medium leading-snug text-white">{t.name}</div>
+              <div className="mt-1 text-xs text-gray-400">{t.project_name}</div>
+              <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                <span className="truncate text-gray-300">{t.owners || 'Unassigned'}</span>
+                <span className={late ? 'text-rag-red' : t.due_date === today ? 'text-rag-amber' : 'text-gray-300'}>
+                  {fmtDate(t.due_date)}{late ? ` · ${late}d late` : ''}
+                </span>
+              </div>
+            </a>
+          );
+        })}
+        {!tasks.length && <div className="card p-6 text-center text-sm text-gray-500">No tasks here.</div>}
+      </div>
+
+      <div className="card hidden overflow-x-auto md:block">
         <table className="tbl w-full table-fixed">
           <thead>
             <tr><th className="w-[34%]">Task</th><th className="w-[20%]">Project</th><th className="w-[14%]">Task list</th><th className="w-[12%]">Owner</th><th className="w-[11%]">Due</th><th className="w-[9%]">Status</th></tr>

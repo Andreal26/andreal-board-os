@@ -42,13 +42,13 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <input aria-label="Search" className="input w-64" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select aria-label={`Filter by ${ff.label}`} className="input w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <input aria-label="Search" className="input w-full sm:w-64" placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select aria-label={`Filter by ${ff.label}`} className="input min-w-0 flex-1 sm:w-auto sm:flex-none" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All {ff.label.toLowerCase()}</option>
           {options.map((o) => <option key={o}>{o}</option>)}
         </select>
         <span className="text-xs text-gray-500">{shown.length} of {rows.length}</span>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
           <a className="btn-ghost" href={`/api/export/${dept}${qs}`}>Export CSV</a>
           {canEdit && <a className="btn-ghost" href={`/api/export/${dept}?template=1`}>CSV template</a>}
           {canEdit && <button className="btn-ghost" onClick={() => setShowImport(true)}>Import CSV</button>}
@@ -56,7 +56,31 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      {/* Phones: one card per record — first column is the title, the rest as label/value pairs */}
+      <div className="space-y-2 md:hidden">
+        {shown.map((r) => {
+          const [first, ...rest] = cols;
+          return (
+            <Link key={r.id} href={`/d/${dept}/${r.id}`} className="card block p-3">
+              <div className="font-medium leading-snug text-white">{fmtField(r.data[cfg.titleField ?? first.key] ?? r.data[first.key], first.type) || '—'}</div>
+              <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                {rest.slice(0, 8).map((c) => {
+                  const v = fmtField(r.data[c.key], c.type);
+                  return (
+                    <div key={c.key} className="min-w-0">
+                      <dt className="truncate text-[10px] uppercase tracking-wide text-ink-500">{c.label}</dt>
+                      <dd className={`truncate ${TONE[v] ?? 'text-gray-200'}`}>{v || '—'}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </Link>
+          );
+        })}
+        {!shown.length && <div className="card p-6 text-center text-sm text-ink-500">{rows.length ? 'No rows match the filter.' : 'No records yet.'}</div>}
+      </div>
+
+      <div className="card hidden overflow-x-auto md:block">
         <table className="tbl">
           <thead>
             <tr>

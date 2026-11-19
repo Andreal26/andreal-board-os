@@ -3,6 +3,7 @@ import type { User } from '@/server/auth';
 import { canViewDept } from '@/server/auth';
 import { DEPARTMENTS, DEPT_KEYS } from '@/config/departments';
 import NavLink from '@/components/layout/NavLink';
+import MobileNav from '@/components/layout/MobileNav';
 
 export default function Shell({ user, children }: { user: User; children: React.ReactNode }) {
   const depts = DEPT_KEYS.filter((d) => canViewDept(user, d));
@@ -43,15 +44,11 @@ export default function Shell({ user, children }: { user: User; children: React.
         </div>
       </aside>
       <div className="min-w-0 flex-1">
-        <header className="no-print flex items-center gap-3 border-b border-ink-700 bg-ink-900 px-4 py-3 lg:hidden">
-          <Link href="/" className="h-display text-lg">BOARD <span className="text-coral-500">OS</span></Link>
-          <nav className="flex gap-3 overflow-x-auto text-xs text-gray-300">
-            <Link href="/">Summary</Link><Link href="/departments">Depts</Link><Link href="/alerts">Alerts</Link>
-            {depts.map((d) => <Link key={d} href={`/d/${d}`}>{DEPARTMENTS[d].short}</Link>)}
-            <Link href="/targets">Targets</Link><Link href="/settings">Settings</Link>
-          </nav>
-        </header>
-        <main className="mx-auto max-w-[1400px] p-4 md:p-6">{children}</main>
+        <MobileNav
+          user={{ name: user.name, role: user.role, company: user.company }}
+          depts={depts.map((d) => ({ href: `/d/${d}`, label: DEPARTMENTS[d].name }))}
+        />
+        <main className="mx-auto max-w-[1400px] p-3 sm:p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

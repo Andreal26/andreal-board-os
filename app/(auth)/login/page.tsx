@@ -1,5 +1,5 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function LoginForm() {
@@ -9,6 +9,12 @@ function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [framed, setFramed] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  useEffect(() => {
+    try { setFramed(window.self !== window.top); } catch { setFramed(true); }
+  }, []);
+  const ownTab = typeof window !== 'undefined' ? `${window.location.origin}/login` : '/login';
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -18,6 +24,9 @@ function LoginForm() {
     const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
     setBusy(false);
     if (!res.ok) return setError((await res.json().catch(() => ({}))).error || 'Sign-in failed');
+    // Inside the Hugging Face page, phones (Safari, some Chrome settings) drop the sign-in cookie.
+    const check = await fetch('/api/auth/check', { cache: 'no-store' }).catch(() => null);
+    if (!check?.ok) return setBlocked(true);
     router.replace(sp.get('next') || '/');
     router.refresh();
   }
@@ -38,6 +47,14 @@ function LoginForm() {
         <input id="password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       {error && <p className="text-sm text-coral-400" role="alert">{error}</p>}
+      {(framed || blocked) && (
+        <div className={`rounded-lg border p-3 text-sm ${blocked ? 'border-coral-500/60 bg-coral-500/10 text-coral-200' : 'border-ink-600 text-gray-300'}`}>
+          {blocked
+            ? 'Your browser blocked sign-in inside this Hugging Face page. Open Board OS in its own tab to continue.'
+            : 'On a phone, sign-in works best with Board OS open in its own tab.'}
+          <a href={ownTab} target="_blank" rel="noopener noreferrer" className="btn-primary mt-2 w-full">Open Board OS in its own tab ↗</a>
+        </div>
+      )}
       <button className="btn-primary w-full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
     </form>
   );

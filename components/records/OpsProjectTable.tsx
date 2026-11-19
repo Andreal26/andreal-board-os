@@ -58,12 +58,12 @@ export default function OpsProjectTable({ rows, canEdit, company, initialFilter 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <input aria-label="Search" className="input w-60" placeholder="Search projects…" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select aria-label="Filter by Zoho status" className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <input aria-label="Search" className="input w-full sm:w-60" placeholder="Search projects…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select aria-label="Filter by Zoho status" className="input min-w-0 flex-1 sm:w-auto sm:flex-none" value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">All statuses</option>
           {statuses.map((s) => <option key={s}>{s}</option>)}
         </select>
-        <select aria-label="Filter by delivery" className="input w-auto" value={delivery} onChange={(e) => setDelivery(e.target.value)}>
+        <select aria-label="Filter by delivery" className="input min-w-0 flex-1 sm:w-auto sm:flex-none" value={delivery} onChange={(e) => setDelivery(e.target.value)}>
           <option value="">All delivery</option>
           {['On Track', 'At Risk', 'Delayed', 'Delivered', 'Closed'].map((s) => <option key={s}>{s}</option>)}
         </select>
@@ -75,14 +75,51 @@ export default function OpsProjectTable({ rows, canEdit, company, initialFilter 
           {sort.key === 'age' && sort.dir === 1 ? 'Oldest first ↑' : 'Newest first ↓'}
         </button>
         <span className="text-xs text-gray-500">Total count: {shown.length}{shown.length !== rows.length ? ` of ${rows.length}` : ''}</span>
-        <div className="ml-auto flex flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
           <a className="btn-ghost" href={`/api/export/operations${qs}`}>Export CSV</a>
           {canEdit && <button className="btn-ghost" onClick={() => setShowImport(true)}>Import CSV</button>}
           {canEdit && <Link className="btn-primary" href="/d/operations/new">+ Add record</Link>}
         </div>
       </div>
 
-      <div className="card overflow-x-auto">
+      {/* Phones: one card per project */}
+      <div className="space-y-2 md:hidden">
+        {shown.map((r) => {
+          const d = r.data;
+          const closed = n(d.tasksClosed), total = n(d.tasksTotal), open = Math.max(0, total - closed);
+          const pct = d.completionPct !== undefined && d.completionPct !== null ? Math.round(n(d.completionPct)) : total ? Math.round((closed / total) * 100) : 0;
+          return (
+            <div key={r.id} className="card p-3">
+              <div className="flex items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] text-gray-500">{String(d.zohoKey ?? d.jobId ?? '')}</div>
+                  <Link href={`/d/operations/${r.id}`} className="block font-medium leading-snug text-white">{String(d.jobName ?? '—')}</Link>
+                </div>
+                {d.zohoStatus ? (
+                  <span className="shrink-0 rounded px-2 py-1 text-[11px] font-semibold text-white" style={{ background: String(d.zohoStatusColor ?? '#2cc8ba') }}>{String(d.zohoStatus)}</span>
+                ) : null}
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-xs tabular-nums">
+                <span className="relative h-3.5 flex-1 overflow-hidden rounded bg-white/10">
+                  <span className="absolute inset-y-0 left-0 bg-rag-green/80" style={{ width: `${pct}%` }} />
+                  <span className="absolute inset-0 grid place-items-center text-[10px] text-white">{pct}%</span>
+                </span>
+                <span className="text-gray-400">{closed} closed · {open} open</span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-400">
+                <div className="truncate">👤 {String(d.owner ?? '—')}</div>
+                <div className={`text-right ${DELIVERY_TONE[String(d.deliveryStatus)] ?? ''}`}>{String(d.deliveryStatus ?? '—')}{n(d.delayDays) > 0 ? ` (${n(d.delayDays)}d)` : ''}</div>
+                <div>Start {fmtDate(d.startDate as string) || '—'}</div>
+                <div className="text-right">End {fmtDate(d.committedDate as string) || '—'}</div>
+              </div>
+              {d.zohoLink ? <a href={String(d.zohoLink)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-teal-300">Open in Zoho ↗</a> : null}
+            </div>
+          );
+        })}
+        {!shown.length && <div className="card p-6 text-center text-sm text-ink-500">{rows.length ? 'No projects match the filter.' : 'No projects yet.'}</div>}
+      </div>
+
+      <div className="card hidden overflow-x-auto md:block">
         <table className="tbl">
           <thead>
             <tr>

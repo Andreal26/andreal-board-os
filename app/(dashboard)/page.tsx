@@ -94,7 +94,7 @@ export default async function ExecutiveSummary({ searchParams }: { searchParams:
         <div className="card card-pad">
           <h3 className="mb-3 text-sm font-medium text-white">Marketing efficiency by channel</h3>
           {board.charts.funnel.length ? (
-            <table className="tbl">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
               <thead><tr><th>Channel</th><th className="text-right">Spend</th><th className="text-right">Leads</th><th className="text-right">CPL</th><th className="text-right">MQL</th></tr></thead>
               <tbody>
                 {board.charts.funnel.map((r) => (
@@ -107,7 +107,7 @@ export default async function ExecutiveSummary({ searchParams }: { searchParams:
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           ) : <p className="text-sm text-ink-500">No campaigns in this period.</p>}
         </div>
       </section>

@@ -68,7 +68,7 @@ export default function TargetsEditor({ company, month, metrics, initial, canEdi
         {depts.map((d) => (
           <div key={d} className="card card-pad">
             <h3 className="mb-2 text-sm font-medium text-white">{d}</h3>
-            <table className="tbl">
+            <div className="-mx-1 overflow-x-auto px-1"><table className="tbl">
               <tbody>
                 {metrics.filter((m) => m.dept === d).map((m) => (
                   <tr key={m.id}>
@@ -88,7 +88,7 @@ export default function TargetsEditor({ company, month, metrics, initial, canEdi
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ))}
       </div>
