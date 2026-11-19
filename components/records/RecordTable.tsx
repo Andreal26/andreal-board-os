@@ -14,17 +14,28 @@ interface Row { id: number; company: string; source: string; data: RecordData; u
 
 export default function RecordTable({ dept, rows, canEdit, company, initialFilter }: { dept: DeptKey; rows: Row[]; canEdit: boolean; company: string; initialFilter?: string }) {
   const cfg = DEPARTMENTS[dept];
-  const cols = cfg.fields.filter((f) => f.col);
+  // The list's main date (Sales: Lead Date) is always shown, right after the first column, so "newest first" is visible.
+  const dateCol = cfg.dateField ? cfg.fields.find((f) => f.key === cfg.dateField) : undefined;
+  const baseCols = cfg.fields.filter((f) => f.col);
+  const cols = dateCol && !baseCols.includes(dateCol) ? [baseCols[0], dateCol, ...baseCols.slice(1)] : baseCols;
   const ff = cfg.fields.find((f) => f.key === FILTER_FIELD[dept])!;
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState(initialFilter ?? '');
-  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(null);
+  // Default: newest first by the list's main date (ties: newest Zoho/opportunity id, then newest record)
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(cfg.dateField ? { key: '__age', dir: -1 } : null);
   const [showImport, setShowImport] = useState(false);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
     let out = rows.filter((r) => (!filter || r.data[ff.key] === filter) && (!needle || Object.values(r.data).some((v) => String(v ?? '').toLowerCase().includes(needle))));
-    if (sort) {
+    if (sort?.key === '__age') {
+      const tie = (r: Row) => Number(String(r.data.opportunityId ?? '').replace(/\D/g, '').slice(-15)) || r.id;
+      out = [...out].sort((a, b) => {
+        const x = String(a.data[cfg.dateField!] ?? ''), y = String(b.data[cfg.dateField!] ?? '');
+        if (x !== y) return !x ? 1 : !y ? -1 : x.localeCompare(y) * sort.dir;
+        return (tie(a) - tie(b)) * sort.dir;
+      });
+    } else if (sort) {
       out = [...out].sort((a, b) => {
         const x = a.data[sort.key], y = b.data[sort.key];
         if (x === y) return 0;
@@ -34,7 +45,7 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
       });
     }
     return out;
-  }, [rows, q, filter, sort, ff.key]);
+  }, [rows, q, filter, sort, ff.key, cfg.dateField]);
 
   const options = ff.key === 'company' ? ['Andreal', 'Anderson'] : ff.list ? LISTS[ff.list] : [];
   const qs = company !== 'All' ? `?company=${company}` : '';
@@ -47,6 +58,15 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
           <option value="">All {ff.label.toLowerCase()}</option>
           {options.map((o) => <option key={o}>{o}</option>)}
         </select>
+        {cfg.dateField && (
+          <button
+            className={`btn-ghost ${sort?.key === '__age' ? 'border-teal-400/60 text-teal-200' : ''}`}
+            onClick={() => setSort(sort?.key === '__age' ? { key: '__age', dir: sort.dir === -1 ? 1 : -1 } : { key: '__age', dir: -1 })}
+            title={`Sort by ${dateCol?.label ?? 'date'}`}
+          >
+            {sort?.key === '__age' && sort.dir === 1 ? 'Oldest first ↑' : 'Newest first ↓'}
+          </button>
+        )}
         <span className="text-xs text-gray-500">{shown.length} of {rows.length}</span>
         <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
           <a className="btn-ghost" href={`/api/export/${dept}${qs}`}>Export CSV</a>
