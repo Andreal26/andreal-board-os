@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEPARTMENTS, type DeptKey, type RecordData } from '@/config/departments';
 import { LISTS } from '@/config/lists';
 import { fmtField } from '@/lib/format';
@@ -24,6 +24,9 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
   // Default: newest first by the list's main date (ties: newest Zoho/opportunity id, then newest record)
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 } | null>(cfg.dateField ? { key: '__age', dir: -1 } : null);
   const [showImport, setShowImport] = useState(false);
+  // Big lists (Sales has 4,000+ deals) render 100 rows at a time; search / filter / sort still cover every row.
+  const PAGE = 100;
+  const [limit, setLimit] = useState(PAGE);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -46,6 +49,8 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
     }
     return out;
   }, [rows, q, filter, sort, ff.key, cfg.dateField]);
+  useEffect(() => setLimit(PAGE), [q, filter, sort]);
+  const visible = shown.slice(0, limit);
 
   const options = ff.key === 'company' ? ['Andreal', 'Anderson'] : ff.list ? LISTS[ff.list] : [];
   const qs = company !== 'All' ? `?company=${company}` : '';
@@ -78,7 +83,7 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
 
       {/* Phones: one card per record — first column is the title, the rest as label/value pairs */}
       <div className="space-y-2 md:hidden">
-        {shown.map((r) => {
+        {visible.map((r) => {
           const [first, ...rest] = cols;
           return (
             <Link key={r.id} href={`/d/${dept}/${r.id}`} className="card block p-3">
@@ -115,7 +120,7 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
             </tr>
           </thead>
           <tbody>
-            {shown.map((r) => (
+            {visible.map((r) => (
               <tr key={r.id}>
                 {cols.map((c, i) => {
                   const v = fmtField(r.data[c.key], c.type);
@@ -139,6 +144,13 @@ export default function RecordTable({ dept, rows, canEdit, company, initialFilte
           </tbody>
         </table>
       </div>
+      {shown.length > limit && (
+        <div className="flex flex-wrap items-center justify-center gap-3 py-2 text-sm text-gray-400">
+          <span>Showing {limit.toLocaleString('en-IN')} of {shown.length.toLocaleString('en-IN')}</span>
+          <button className="btn-ghost" onClick={() => setLimit(limit + PAGE * 2)}>Show more</button>
+          <button className="btn-ghost" onClick={() => setLimit(shown.length)}>Show all</button>
+        </div>
+      )}
       {showImport && <ImportDialog dept={dept} onClose={() => setShowImport(false)} />}
     </div>
   );
